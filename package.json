@@ -1,7 +1,8 @@
 {
 	"name": "art-qr",
 	"version": "0.1.0",
-	"description": "JavaScript library to generate beautiful QR code in browser, with zero dependency",
+	"description":
+		"JavaScript library to generate beautiful QR code in browser, with zero dependency",
 	"main": "dist/bundle.cjs.js",
 	"module": "dist/bundle.esm.js",
 	"browser": "dist/bundle.umd.js",
@@ -30,12 +31,7 @@
 		"lint": "eslint src/*.js"
 	},
 	"lint-staged": {
-		"**/*.js": [
-			"prettier --write",
-			"git add"
-		]
+		"src/**/*.js": ["prettier --write", "git add"]
 	},
-	"files": [
-		"dist"
-	]
+	"files": ["dist"]
 }
