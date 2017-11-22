@@ -14,7 +14,9 @@ npm install art-qr -S
 ```
 
 ### Usgae
-All options can see (here)[https://github.com/SumiMakito/Awesome-qr.js#options].
+
+All options can see [here](https://github.com/SumiMakito/Awesome-qr.js#options).
+
 ```js
 import ArtQR from 'art-qr'
 
