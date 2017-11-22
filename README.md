@@ -18,11 +18,12 @@ npm install art-qr -S
 All options can see [here](https://github.com/SumiMakito/Awesome-qr.js#options).
 
 ```js
-import ArtQR from 'art-qr'
+import ArtQR from 'art-qr';
 
 const img = new Image();
 img.crossOrigin = "Anonymous";
 img.src = YOUR_IMAGE_URL;
+
 img.onload = () => {
   new ArtQR().create({
     text: YOUR_URL_OR_TEXT,
@@ -33,7 +34,7 @@ img.onload = () => {
       console.log(dataUri)
     },
     bindElement: 'qr' // id of <img /> in real dom
-  })
+  });
 }
 ```
 
