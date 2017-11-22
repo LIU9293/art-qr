@@ -1,5 +1,7 @@
 <img src="https://raw.githubusercontent.com/LIU9293/art-qr/master/qr.jpg" align="right" />
+
 # art-qr
+
 > Pure JavaScript library to generate beautiful QR code on websites
 
 ![travis](https://travis-ci.org/LIU9293/art-qr.svg?branch=master) [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
