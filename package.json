@@ -1,24 +1,41 @@
 {
-  "name": "rollup-starter-lib",
-  "version": "1.0.0",
-  "main": "dist/how-long-till-lunch.cjs.js",
-  "module": "dist/how-long-till-lunch.esm.js",
-  "browser": "dist/how-long-till-lunch.umd.js",
-  "dependencies": {
-    "ms": "^2.0.0"
-  },
-  "devDependencies": {
-    "rollup": "^0.50.0",
-    "rollup-plugin-commonjs": "^8.2.6",
-    "rollup-plugin-node-resolve": "^3.0.0"
-  },
-  "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "test": "node test/test.js",
-    "pretest": "npm run build"
-  },
-  "files":[
-    "dist"
-  ]
+	"name": "art-qr",
+	"version": "0.1.0",
+	"description": "JavaScript library to generate beautiful QR code in browser, with zero dependency",
+	"main": "dist/bundle.cjs.js",
+	"module": "dist/bundle.esm.js",
+	"browser": "dist/bundle.umd.js",
+	"devDependencies": {
+		"eslint": "^4.11.0",
+		"eslint-config-prettier": "^2.8.0",
+		"eslint-config-standard": "^10.2.1",
+		"eslint-plugin-import": "^2.8.0",
+		"eslint-plugin-node": "^5.2.1",
+		"eslint-plugin-prettier": "^2.3.1",
+		"eslint-plugin-promise": "^3.6.0",
+		"eslint-plugin-standard": "^3.0.1",
+		"husky": "^0.14.3",
+		"lint-staged": "^5.0.0",
+		"prettier": "1.8.2",
+		"rollup": "^0.50.0",
+		"rollup-plugin-commonjs": "^8.2.6",
+		"rollup-plugin-node-resolve": "^3.0.0"
+	},
+	"scripts": {
+		"build": "rollup -c",
+		"dev": "rollup -c -w",
+		"test": "node test/test.js",
+		"pretest": "npm run build",
+		"precommit": "lint-staged",
+		"lint": "eslint src/*.js"
+	},
+	"lint-staged": {
+		"**/*.js": [
+			"prettier --write",
+			"git add"
+		]
+	},
+	"files": [
+		"dist"
+	]
 }
