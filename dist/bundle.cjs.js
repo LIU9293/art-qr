@@ -1,6 +1,70 @@
 'use strict';
 
-const ByteStream = require('./ByteStream');
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var GIFE = _interopDefault(require('gif.js'));
+
+function ByteStream(data) {
+  this.data = data;
+  this.pos = 0;
+}
+
+// read the next byte off the stream
+ByteStream.prototype.readByte = function() {
+  return this.data[this.pos++];
+};
+
+// look at the next byte in the stream without updating the stream position
+ByteStream.prototype.peekByte = function() {
+  return this.data[this.pos];
+};
+
+// read an array of bytes
+ByteStream.prototype.readBytes = function(n) {
+  var bytes = new Array(n);
+  for (var i = 0; i < n; i++) {
+    bytes[i] = this.readByte();
+  }
+  return bytes;
+};
+
+// peek at an array of bytes without updating the stream position
+ByteStream.prototype.peekBytes = function(n) {
+  var bytes = new Array(n);
+  for (var i = 0; i < n; i++) {
+    bytes[i] = this.data[this.pos + i];
+  }
+  return bytes;
+};
+
+// read a string from a byte set
+ByteStream.prototype.readString = function(len) {
+  var str = '';
+  for (var i = 0; i < len; i++) {
+    str += String.fromCharCode(this.readByte());
+  }
+  return str;
+};
+
+// read a single byte and return an array of bit booleans
+ByteStream.prototype.readBitArray = function() {
+  var arr = [];
+  var bite = this.readByte();
+  for (var i = 7; i >= 0; i--) {
+    arr.push(!!(bite & (1 << i)));
+  }
+  return arr;
+};
+
+// read an unsigned int with endian option
+ByteStream.prototype.readUnsigned = function(littleEndian) {
+  var a = this.readBytes(2);
+  if (littleEndian) {
+    return (a[1] << 8) + a[0];
+  } else {
+    return (a[0] << 8) + a[1];
+  }
+};
 
 function DataParser(data) {
   this.stream = new ByteStream(data);
@@ -1545,8 +1609,6 @@ QRCodeModel.createBytes = function(buffer, rsBlocks) {
   }
   return data;
 };
-
-const GIFE = require('./lib/gif');
 
 function _onMakeImage() {
   this._elImage.src = this._elCanvas.toDataURL('image/png');

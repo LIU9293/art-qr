@@ -1,12 +1,12 @@
 {
 	"name": "art-qr",
 	"version": "0.1.0",
-	"description":
-		"JavaScript library to generate beautiful QR code in browser, with zero dependency",
+	"description": "JavaScript library to generate beautiful QR code in browser",
 	"main": "dist/bundle.cjs.js",
 	"module": "dist/bundle.esm.js",
 	"browser": "dist/bundle.umd.js",
 	"devDependencies": {
+		"canvas-prebuilt": "^1.6.5-prerelease.1",
 		"eslint": "^4.11.0",
 		"eslint-config-prettier": "^2.8.0",
 		"eslint-config-standard": "^10.2.1",
@@ -16,16 +16,19 @@
 		"eslint-plugin-promise": "^3.6.0",
 		"eslint-plugin-standard": "^3.0.1",
 		"husky": "^0.14.3",
+		"jsdom": "^11.4.0",
 		"lint-staged": "^5.0.0",
+		"mocha": "^4.0.1",
 		"prettier": "1.8.2",
 		"rollup": "^0.50.0",
 		"rollup-plugin-commonjs": "^8.2.6",
-		"rollup-plugin-node-resolve": "^3.0.0"
+		"rollup-plugin-node-resolve": "^3.0.0",
+		"sinon": "^4.1.2"
 	},
 	"scripts": {
 		"build": "rollup -c",
 		"dev": "rollup -c -w",
-		"test": "node test/test.js",
+		"test": "npm run build && mocha --require ./test/setup.js ./test/test.js",
 		"pretest": "npm run build",
 		"precommit": "lint-staged",
 		"lint": "eslint src/*.js"
@@ -33,5 +36,8 @@
 	"lint-staged": {
 		"src/**/*.js": ["prettier --write", "git add"]
 	},
-	"files": ["dist"]
+	"files": ["dist"],
+	"dependencies": {
+		"gif.js": "^0.2.0"
+	}
 }

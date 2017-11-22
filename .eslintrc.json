@@ -3,5 +3,13 @@
 	"plugins": ["prettier"],
 	"rules": {
 		"prettier/prettier": "error"
+	},
+	"globals": {
+		"describe": true,
+		"it": true
+	},
+	"env": {
+		"es6": true,
+		"node": true
 	}
 }

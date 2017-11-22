@@ -1,4 +1,8 @@
-import GIFE from 'gif.js';
+'use strict';
+
+function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
+
+var GIFE = _interopDefault(require('gif.js'));
 
 function ByteStream(data) {
   this.data = data;
@@ -1606,6 +1610,8 @@ QRCodeModel.createBytes = function(buffer, rsBlocks) {
   return data;
 };
 
+console.log(GIFE);
+
 function _onMakeImage() {
   this._elImage.src = this._elCanvas.toDataURL('image/png');
   this._elImage.style.display = 'block';
@@ -2393,4 +2399,4 @@ function getAverageRGB(imgEl) {
   return rgb;
 }
 
-export default AwesomeQRCode;
+module.exports = AwesomeQRCode;

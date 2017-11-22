@@ -1,7 +1,7 @@
 import GIF from './myGif';
+import GIFE from 'gif.js';
 import QRCodeModel from './QRCodeModel';
 import { QRErrorCorrectLevel, QRUtil } from './constant';
-const GIFE = require('./lib/gif');
 
 function _onMakeImage() {
   this._elImage.src = this._elCanvas.toDataURL('image/png');

@@ -1,4 +1,4 @@
-const ByteStream = require('./ByteStream');
+import ByteStream from './ByteStream';
 
 function DataParser(data) {
   this.stream = new ByteStream(data);
