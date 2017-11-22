@@ -31,7 +31,8 @@
 		"test": "npm run build && mocha --require ./test/setup.js ./test/test.js",
 		"pretest": "npm run build",
 		"precommit": "lint-staged",
-		"lint": "eslint src/*.js"
+		"lint": "eslint src/*.js",
+		"prepublish": "npm run build"
 	},
 	"lint-staged": {
 		"src/**/*.js": ["prettier --write", "git add"]
