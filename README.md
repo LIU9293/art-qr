@@ -18,16 +18,20 @@ npm install art-qr -S
 ### Usgae
 
 All options can see [here](https://github.com/SumiMakito/Awesome-qr.js#options).
+Upon of the original version, we provide `download` method, see the code as example:
 
 ```js
 import ArtQR from 'art-qr';
+
+// create something you can access to store the instance if you want
+let MyQRInstance;
 
 const img = new Image();
 img.crossOrigin = "Anonymous";
 img.src = YOUR_IMAGE_URL;
 
 img.onload = () => {
-  new ArtQR().create({
+  MyQRInstance = new ArtQR().create({
     text: YOUR_URL_OR_TEXT,
     size: 300,
     margin: 10,
@@ -38,6 +42,9 @@ img.onload = () => {
     bindElement: 'qr' // id of <img /> in real dom
   });
 }
+
+// download the QR code is easy
+MyQRInstance.download()
 ```
 
 ### Credit

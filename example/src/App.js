@@ -1,12 +1,17 @@
 import React, { Component } from 'react';
 import logo from './logo.svg';
-import ArtQR from './qr/bundle.cjs.js';
+import ArtQR from './qr';
 import SharkImg from './shark.jpg';
 import './App.css';
 
 class App extends Component {
+  constructor(props) {
+    super(props);
+    this.ArtQRInstance = null
+  }
+
   componentDidMount() {
-    this.renderQR()
+    this.renderQR();
   }
 
   renderQR = () => {
@@ -14,7 +19,7 @@ class App extends Component {
     img.crossOrigin = "Anonymous";
     img.src = SharkImg;
     img.onload = () => {
-      new ArtQR().create({
+      this.ArtQRInstance = new ArtQR().create({
         text: 'https://github.com/LIU9293/art-qr',
         size: 300,
         margin: 10,
@@ -32,8 +37,12 @@ class App extends Component {
         binarize: false,
         binarizeThreshold: 128,
         bindElement: 'qrcode'
-      })
+      });
     }
+  }
+
+  downloadQRCode = () => {
+    this.ArtQRInstance.download()
   }
 
   render() {
@@ -43,6 +52,7 @@ class App extends Component {
           <h1 className="App-title">Art QR</h1>
         </header>
         <img src="" alt="qr" id="qrcode" className="qr-code" />
+        <button onClick={this.downloadQRCode} className="download-button">download</button>
       </div>
     );
   }

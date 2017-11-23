@@ -8,3 +8,21 @@ body {
   margin: 30px auto;
   box-shadow: 0 0 10px 5px #e9ecef;
 }
+
+.download-button {
+  display: block;
+  width: 160px;
+  height: 54px;
+  border-radius: 27px;
+  margin: 20px auto;
+  background: #22b8cf;
+  color: #fff;
+  font-size: 20px;
+  border: none;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.download-button:hover {
+  box-shadow: 0 0 15px 5px #99e9f2;
+}

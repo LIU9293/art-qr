@@ -1,6 +1,6 @@
 {
 	"name": "art-qr",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "JavaScript library to generate beautiful QR code in browser",
 	"main": "dist/bundle.cjs.js",
 	"module": "dist/bundle.esm.js",
