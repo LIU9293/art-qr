@@ -1,5 +1,6 @@
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
+import babel from 'rollup-plugin-babel';
 import pkg from './package.json';
 
 export default [
@@ -12,8 +13,13 @@ export default [
     },
     name: 'bundle',
     plugins: [
-      resolve(), // so Rollup can find `ms`
-      commonjs() // so Rollup can convert `ms` to an ES module
+      babel({
+        exclude: 'node_modules/**'
+      }),
+      // add babel for es6+ syntax for UglifyJs if used in production
+      // UglifyJs do not support ES6+, you can also use babel-minify for better treeshaking: https://github.com/babel/minify
+      resolve(), // so Rollup can find `gif.js`
+      commonjs() // so Rollup can convert `gif.js` to an ES module
     ]
   },
 

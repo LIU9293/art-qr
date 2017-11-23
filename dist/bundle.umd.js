@@ -10,17 +10,17 @@ function ByteStream(data) {
 }
 
 // read the next byte off the stream
-ByteStream.prototype.readByte = function() {
+ByteStream.prototype.readByte = function () {
   return this.data[this.pos++];
 };
 
 // look at the next byte in the stream without updating the stream position
-ByteStream.prototype.peekByte = function() {
+ByteStream.prototype.peekByte = function () {
   return this.data[this.pos];
 };
 
 // read an array of bytes
-ByteStream.prototype.readBytes = function(n) {
+ByteStream.prototype.readBytes = function (n) {
   var bytes = new Array(n);
   for (var i = 0; i < n; i++) {
     bytes[i] = this.readByte();
@@ -29,7 +29,7 @@ ByteStream.prototype.readBytes = function(n) {
 };
 
 // peek at an array of bytes without updating the stream position
-ByteStream.prototype.peekBytes = function(n) {
+ByteStream.prototype.peekBytes = function (n) {
   var bytes = new Array(n);
   for (var i = 0; i < n; i++) {
     bytes[i] = this.data[this.pos + i];
@@ -38,7 +38,7 @@ ByteStream.prototype.peekBytes = function(n) {
 };
 
 // read a string from a byte set
-ByteStream.prototype.readString = function(len) {
+ByteStream.prototype.readString = function (len) {
   var str = '';
   for (var i = 0; i < len; i++) {
     str += String.fromCharCode(this.readByte());
@@ -47,17 +47,17 @@ ByteStream.prototype.readString = function(len) {
 };
 
 // read a single byte and return an array of bit booleans
-ByteStream.prototype.readBitArray = function() {
+ByteStream.prototype.readBitArray = function () {
   var arr = [];
   var bite = this.readByte();
   for (var i = 7; i >= 0; i--) {
-    arr.push(!!(bite & (1 << i)));
+    arr.push(!!(bite & 1 << i));
   }
   return arr;
 };
 
 // read an unsigned int with endian option
-ByteStream.prototype.readUnsigned = function(littleEndian) {
+ByteStream.prototype.readUnsigned = function (littleEndian) {
   var a = this.readBytes(2);
   if (littleEndian) {
     return (a[1] << 8) + a[0];
@@ -74,26 +74,26 @@ function DataParser(data) {
 
 // combine bits to calculate value
 function bitsToNum(bitArray) {
-  return bitArray.reduce(function(s, n) {
+  return bitArray.reduce(function (s, n) {
     return s * 2 + n;
   }, 0);
 }
 
-DataParser.prototype.parse = function(schema) {
+DataParser.prototype.parse = function (schema) {
   // the top level schema is just the top level parts array
   this.parseParts(this.output, schema);
   return this.output;
 };
 
 // parse a set of hierarchy parts providing the parent object, and the subschema
-DataParser.prototype.parseParts = function(obj, schema) {
+DataParser.prototype.parseParts = function (obj, schema) {
   for (var i = 0; i < schema.length; i++) {
     var part = schema[i];
     this.parsePart(obj, part);
   }
 };
 
-DataParser.prototype.parsePart = function(obj, part) {
+DataParser.prototype.parsePart = function (obj, part) {
   var name = part.label;
   var value;
 
@@ -129,7 +129,7 @@ DataParser.prototype.parsePart = function(obj, part) {
 };
 
 // parse a byte as a bit set (flags and values)
-DataParser.prototype.parseBits = function(details) {
+DataParser.prototype.parseBits = function (details) {
   var out = {};
   var bits = this.stream.readBitArray();
   for (var key in details) {
@@ -144,34 +144,34 @@ DataParser.prototype.parseBits = function(details) {
   return out;
 };
 
-const Parsers = {
+var Parsers = {
   // read a byte
-  readByte: function() {
-    return function(stream) {
+  readByte: function readByte() {
+    return function (stream) {
       return stream.readByte();
     };
   },
   // read an array of bytes
-  readBytes: function(length) {
-    return function(stream) {
+  readBytes: function readBytes(length) {
+    return function (stream) {
       return stream.readBytes(length);
     };
   },
   // read a string from bytes
-  readString: function(length) {
-    return function(stream) {
+  readString: function readString(length) {
+    return function (stream) {
       return stream.readString(length);
     };
   },
   // read an unsigned int (with endian)
-  readUnsigned: function(littleEndian) {
-    return function(stream) {
+  readUnsigned: function readUnsigned(littleEndian) {
+    return function (stream) {
       return stream.readUnsigned(littleEndian);
     };
   },
   // read an array of byte sets
-  readArray: function(size, countFunc) {
-    return function(stream, obj, parent) {
+  readArray: function readArray(size, countFunc) {
+    return function (stream, obj, parent) {
       var count = countFunc(stream, obj, parent);
       var arr = new Array(count);
       for (var i = 0; i < count; i++) {
@@ -185,16 +185,12 @@ const Parsers = {
 /* eslint-disable camelcase */
 /* eslint-disable eqeqeq */
 // a set of 0x00 terminated subblocks
-const subBlocks = {
+var subBlocks = {
   label: 'blocks',
-  parser: function(stream) {
+  parser: function parser(stream) {
     var out = [];
     var terminator = 0x00;
-    for (
-      var size = stream.readByte();
-      size !== terminator;
-      size = stream.readByte()
-    ) {
+    for (var size = stream.readByte(); size !== terminator; size = stream.readByte()) {
       out = out.concat(stream.readBytes(size));
     }
     return out;
@@ -202,101 +198,78 @@ const subBlocks = {
 };
 
 // global control extension
-const gce = {
+var gce = {
   label: 'gce',
-  requires: function(stream) {
+  requires: function requires(stream) {
     // just peek at the top two bytes, and if true do this
     var codes = stream.peekBytes(2);
     return codes[0] === 0x21 && codes[1] === 0xf9;
   },
-  parts: [
-    { label: 'codes', parser: Parsers.readBytes(2), skip: true },
-    { label: 'byteSize', parser: Parsers.readByte() },
-    {
-      label: 'extras',
-      bits: {
-        future: { index: 0, length: 3 },
-        disposal: { index: 3, length: 3 },
-        userInput: { index: 6 },
-        transparentColorGiven: { index: 7 }
-      }
-    },
-    { label: 'delay', parser: Parsers.readUnsigned(true) },
-    { label: 'transparentColorIndex', parser: Parsers.readByte() },
-    { label: 'terminator', parser: Parsers.readByte(), skip: true }
-  ]
+  parts: [{ label: 'codes', parser: Parsers.readBytes(2), skip: true }, { label: 'byteSize', parser: Parsers.readByte() }, {
+    label: 'extras',
+    bits: {
+      future: { index: 0, length: 3 },
+      disposal: { index: 3, length: 3 },
+      userInput: { index: 6 },
+      transparentColorGiven: { index: 7 }
+    }
+  }, { label: 'delay', parser: Parsers.readUnsigned(true) }, { label: 'transparentColorIndex', parser: Parsers.readByte() }, { label: 'terminator', parser: Parsers.readByte(), skip: true }]
 };
 
 // image pipeline block
-const image = {
+var image = {
   label: 'image',
-  requires: function(stream) {
+  requires: function requires(stream) {
     // peek at the next byte
     var code = stream.peekByte();
     return code === 0x2c;
   },
-  parts: [
-    { label: 'code', parser: Parsers.readByte(), skip: true },
-    {
-      label: 'descriptor', // image descriptor
-      parts: [
-        { label: 'left', parser: Parsers.readUnsigned(true) },
-        { label: 'top', parser: Parsers.readUnsigned(true) },
-        { label: 'width', parser: Parsers.readUnsigned(true) },
-        { label: 'height', parser: Parsers.readUnsigned(true) },
-        {
-          label: 'lct',
-          bits: {
-            exists: { index: 0 },
-            interlaced: { index: 1 },
-            sort: { index: 2 },
-            future: { index: 3, length: 2 },
-            size: { index: 5, length: 3 }
-          }
-        }
-      ]
+  parts: [{ label: 'code', parser: Parsers.readByte(), skip: true }, {
+    label: 'descriptor', // image descriptor
+    parts: [{ label: 'left', parser: Parsers.readUnsigned(true) }, { label: 'top', parser: Parsers.readUnsigned(true) }, { label: 'width', parser: Parsers.readUnsigned(true) }, { label: 'height', parser: Parsers.readUnsigned(true) }, {
+      label: 'lct',
+      bits: {
+        exists: { index: 0 },
+        interlaced: { index: 1 },
+        sort: { index: 2 },
+        future: { index: 3, length: 2 },
+        size: { index: 5, length: 3 }
+      }
+    }]
+  }, {
+    label: 'lct', // optional local color table
+    requires: function requires(stream, obj, parent) {
+      return parent.descriptor.lct.exists;
     },
-    {
-      label: 'lct', // optional local color table
-      requires: function(stream, obj, parent) {
-        return parent.descriptor.lct.exists;
-      },
-      parser: Parsers.readArray(3, function(stream, obj, parent) {
-        return Math.pow(2, parent.descriptor.lct.size + 1);
-      })
-    },
-    {
-      label: 'data', // the image data blocks
-      parts: [{ label: 'minCodeSize', parser: Parsers.readByte() }, subBlocks]
-    }
-  ]
+    parser: Parsers.readArray(3, function (stream, obj, parent) {
+      return Math.pow(2, parent.descriptor.lct.size + 1);
+    })
+  }, {
+    label: 'data', // the image data blocks
+    parts: [{ label: 'minCodeSize', parser: Parsers.readByte() }, subBlocks]
+  }]
 };
 
 // plain text block
-const text = {
+var text = {
   label: 'text',
-  requires: function(stream) {
+  requires: function requires(stream) {
     // just peek at the top two bytes, and if true do this
     var codes = stream.peekBytes(2);
     return codes[0] === 0x21 && codes[1] === 0x01;
   },
-  parts: [
-    { label: 'codes', parser: Parsers.readBytes(2), skip: true },
-    { label: 'blockSize', parser: Parsers.readByte() },
-    {
-      label: 'preData',
-      parser: function(stream, obj, parent) {
-        return stream.readBytes(parent.text.blockSize);
-      }
-    },
-    subBlocks
-  ]
+  parts: [{ label: 'codes', parser: Parsers.readBytes(2), skip: true }, { label: 'blockSize', parser: Parsers.readByte() }, {
+    label: 'preData',
+    parser: function parser(stream, obj, parent) {
+      return stream.readBytes(parent.text.blockSize);
+    }
+  }, subBlocks]
 };
 
 // application block
-const application = {
+var application = {
   label: 'application',
-  requires: function(stream, obj, parent) {
+  requires: function requires(stream, obj, parent) {
     // make sure this frame doesn't already have a gce, text, comment, or image
     // as that means this block should be attached to the next frame
     // if(parent.gce || parent.text || parent.image || parent.comment){ return false; }
@@ -305,23 +278,18 @@ const application = {
     var codes = stream.peekBytes(2);
     return codes[0] === 0x21 && codes[1] === 0xff;
   },
-  parts: [
-    { label: 'codes', parser: Parsers.readBytes(2), skip: true },
-    { label: 'blockSize', parser: Parsers.readByte() },
-    {
-      label: 'id',
-      parser: function(stream, obj, parent) {
-        return stream.readString(parent.blockSize);
-      }
-    },
-    subBlocks
-  ]
+  parts: [{ label: 'codes', parser: Parsers.readBytes(2), skip: true }, { label: 'blockSize', parser: Parsers.readByte() }, {
+    label: 'id',
+    parser: function parser(stream, obj, parent) {
+      return stream.readString(parent.blockSize);
+    }
+  }, subBlocks]
 };
 
 // comment block
-const comment = {
+var comment = {
   label: 'comment',
-  requires: function(stream, obj, parent) {
+  requires: function requires(stream, obj, parent) {
     // make sure this frame doesn't already have a gce, text, comment, or image
     // as that means this block should be attached to the next frame
     // if(parent.gce || parent.text || parent.image || parent.comment){ return false; }
@@ -330,17 +298,14 @@ const comment = {
     var codes = stream.peekBytes(2);
     return codes[0] === 0x21 && codes[1] === 0xfe;
   },
-  parts: [
-    { label: 'codes', parser: Parsers.readBytes(2), skip: true },
-    subBlocks
-  ]
+  parts: [{ label: 'codes', parser: Parsers.readBytes(2), skip: true }, subBlocks]
 };
 
 // frames of ext and image data
-const frames = {
+var frames = {
   label: 'frames',
   parts: [gce, application, comment, image, text],
-  loop: function(stream) {
+  loop: function loop(stream) {
     var nextCode = stream.peekByte();
     // rather than check for a terminator, we should check for the existence
     // of an ext or image block to avoid infinite loops
@@ -350,42 +315,29 @@ const frames = {
   }
 };
 
-const schemaGIF = [
-  {
-    label: 'header', // gif header
-    parts: [
-      { label: 'signature', parser: Parsers.readString(3) },
-      { label: 'version', parser: Parsers.readString(3) }
-    ]
+var schemaGIF = [{
+  label: 'header', // gif header
+  parts: [{ label: 'signature', parser: Parsers.readString(3) }, { label: 'version', parser: Parsers.readString(3) }]
+}, {
+  label: 'lsd', // local screen descriptor
+  parts: [{ label: 'width', parser: Parsers.readUnsigned(true) }, { label: 'height', parser: Parsers.readUnsigned(true) }, {
+    label: 'gct',
+    bits: {
+      exists: { index: 0 },
+      resolution: { index: 1, length: 3 },
+      sort: { index: 4 },
+      size: { index: 5, length: 3 }
+    }
+  }, { label: 'backgroundColorIndex', parser: Parsers.readByte() }, { label: 'pixelAspectRatio', parser: Parsers.readByte() }]
+}, {
+  label: 'gct', // global color table
+  requires: function requires(stream, obj) {
+    return obj.lsd.gct.exists;
   },
-  {
-    label: 'lsd', // local screen descriptor
-    parts: [
-      { label: 'width', parser: Parsers.readUnsigned(true) },
-      { label: 'height', parser: Parsers.readUnsigned(true) },
-      {
-        label: 'gct',
-        bits: {
-          exists: { index: 0 },
-          resolution: { index: 1, length: 3 },
-          sort: { index: 4 },
-          size: { index: 5, length: 3 }
-        }
-      },
-      { label: 'backgroundColorIndex', parser: Parsers.readByte() },
-      { label: 'pixelAspectRatio', parser: Parsers.readByte() }
-    ]
-  },
-  {
-    label: 'gct', // global color table
-    requires: function(stream, obj) {
-      return obj.lsd.gct.exists;
-    },
-    parser: Parsers.readArray(3, function(stream, obj) {
-      return Math.pow(2, obj.lsd.gct.size + 1);
-    })
-  },
-  frames // content frames
+  parser: Parsers.readArray(3, function (stream, obj) {
+    return Math.pow(2, obj.lsd.gct.size + 1);
+  })
+}, frames // content frames
 ];
 
 function GIF(arrayBuffer) {
@@ -408,7 +360,7 @@ function GIF(arrayBuffer) {
 // process a single gif image frames data, decompressing it using LZW
 // if buildPatch is true, the returned image will be a clamped 8 bit image patch
 // for use directly with a canvas.
-GIF.prototype.decompressFrame = function(index, buildPatch) {
+GIF.prototype.decompressFrame = function (index, buildPatch) {
   // make sure a valid frame is requested
   if (index >= this.raw.frames.length) {
     return null;
@@ -417,15 +369,10 @@ GIF.prototype.decompressFrame = function(index, buildPatch) {
   var frame = this.raw.frames[index];
   if (frame.image) {
     // get the number of pixels
-    var totalPixels =
-      frame.image.descriptor.width * frame.image.descriptor.height;
+    var totalPixels = frame.image.descriptor.width * frame.image.descriptor.height;
 
     // do lzw decompression
-    var pixels = lzw(
-      frame.image.data.minCodeSize,
-      frame.image.data.blocks,
-      totalPixels
-    );
+    var pixels = lzw(frame.image.data.minCodeSize, frame.image.data.blocks, totalPixels);
 
     // deal with interlacing if necessary
     if (frame.image.descriptor.lct.interlaced) {
@@ -480,22 +427,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch) {
     var nullCode = -1;
 
     var npix = pixelCount;
-    var available,
-      clear,
-      code_mask,
-      code_size,
-      end_of_information,
-      in_code,
-      old_code,
-      bits,
-      code,
-      i,
-      datum,
-      data_size,
-      first,
-      top,
-      bi,
-      pi;
+    var available, clear, code_mask, code_size, end_of_information, in_code, old_code, bits, code, i, datum, data_size, first, top, bi, pi;
 
     var dstPixels = new Array(pixelCount);
     var prefix = new Array(MAX_STACK_SIZE);
@@ -517,7 +449,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch) {
 
     // Decode GIF pixel stream.
     datum = bits = first = top = pi = bi = 0;
-    for (i = 0; i < npix; ) {
+    for (i = 0; i < npix;) {
       if (top === 0) {
         if (bits < code_size) {
           // get the next byte
@@ -593,12 +525,9 @@ GIF.prototype.decompressFrame = function(index, buildPatch) {
   function deinterlace(pixels, width) {
     var newPixels = new Array(pixels.length);
     var rows = pixels.length / width;
-    var cpRow = function(toRow, fromRow) {
+    var cpRow = function cpRow(toRow, fromRow) {
       var fromPixels = pixels.slice(fromRow * width, (fromRow + 1) * width);
-      newPixels.splice.apply(
-        newPixels,
-        [toRow * width, width].concat(fromPixels)
-      );
+      newPixels.splice.apply(newPixels, [toRow * width, width].concat(fromPixels));
     };
 
     // See appendix E.
@@ -636,7 +565,7 @@ GIF.prototype.decompressFrame = function(index, buildPatch) {
 };
 
 // returns all frames decompressed
-GIF.prototype.decompressFrames = function(buildPatch) {
+GIF.prototype.decompressFrames = function (buildPatch) {
   var frames = [];
   for (var i = 0; i < this.raw.frames.length; i++) {
     var frame = this.raw.frames[i];
@@ -2288,9 +2217,9 @@ var gif_js = {
 
 /* eslint-disable camelcase */
 /* eslint-disable eqeqeq */
-const QRErrorCorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
+var QRErrorCorrectLevel = { L: 1, M: 0, Q: 3, H: 2 };
 
-const QRMaskPattern = {
+var QRMaskPattern = {
   PATTERN000: 0,
   PATTERN001: 1,
   PATTERN010: 2,
@@ -2301,21 +2230,21 @@ const QRMaskPattern = {
   PATTERN111: 7
 };
 
-const QRMode = {
+var QRMode = {
   MODE_NUMBER: 1 << 0,
   MODE_ALPHA_NUM: 1 << 1,
   MODE_8BIT_BYTE: 1 << 2,
   MODE_KANJI: 1 << 3
 };
 
-const QRMath = {
-  glog: function(n) {
+var QRMath = {
+  glog: function glog(n) {
     if (n < 1) {
       throw new Error('glog(' + n + ')');
     }
     return QRMath.LOG_TABLE[n];
   },
-  gexp: function(n) {
+  gexp: function gexp(n) {
     while (n < 0) {
       n += 255;
     }
@@ -2328,20 +2257,16 @@ const QRMath = {
   LOG_TABLE: new Array(256)
 };
 
-for (let i = 0; i < 8; i++) {
-  QRMath.EXP_TABLE[i] = 1 << i;
+for (var i$1 = 0; i$1 < 8; i$1++) {
+  QRMath.EXP_TABLE[i$1] = 1 << i$1;
 }
 
-for (let i = 8; i < 256; i++) {
-  QRMath.EXP_TABLE[i] =
-    QRMath.EXP_TABLE[i - 4] ^
-    QRMath.EXP_TABLE[i - 5] ^
-    QRMath.EXP_TABLE[i - 6] ^
-    QRMath.EXP_TABLE[i - 8];
+for (var _i = 8; _i < 256; _i++) {
+  QRMath.EXP_TABLE[_i] = QRMath.EXP_TABLE[_i - 4] ^ QRMath.EXP_TABLE[_i - 5] ^ QRMath.EXP_TABLE[_i - 6] ^ QRMath.EXP_TABLE[_i - 8];
 }
 
-for (let i = 0; i < 255; i++) {
-  QRMath.LOG_TABLE[QRMath.EXP_TABLE[i]] = i;
+for (var _i2 = 0; _i2 < 255; _i2++) {
+  QRMath.LOG_TABLE[QRMath.EXP_TABLE[_i2]] = _i2;
 }
 
 function QRPolynomial(num, shift) {
@@ -2359,111 +2284,57 @@ function QRPolynomial(num, shift) {
 }
 
 QRPolynomial.prototype = {
-  get: function(index) {
+  get: function get(index) {
     return this.num[index];
   },
-  getLength: function() {
+  getLength: function getLength() {
     return this.num.length;
   },
-  multiply: function(e) {
+  multiply: function multiply(e) {
     var num = new Array(this.getLength() + e.getLength() - 1);
     for (var i = 0; i < this.getLength(); i++) {
       for (var j = 0; j < e.getLength(); j++) {
-        num[i + j] ^= QRMath.gexp(
-          QRMath.glog(this.get(i)) + QRMath.glog(e.get(j))
-        );
+        num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i)) + QRMath.glog(e.get(j)));
       }
     }
     return new QRPolynomial(num, 0);
   },
-  mod: function(e) {
+  mod: function mod(e) {
     if (this.getLength() - e.getLength() < 0) {
       return this;
     }
     var ratio = QRMath.glog(this.get(0)) - QRMath.glog(e.get(0));
     var num = new Array(this.getLength());
-    for (let i = 0; i < this.getLength(); i++) {
-      num[i] = this.get(i);
+    for (var _i3 = 0; _i3 < this.getLength(); _i3++) {
+      num[_i3] = this.get(_i3);
     }
-    for (let i = 0; i < e.getLength(); i++) {
-      num[i] ^= QRMath.gexp(QRMath.glog(e.get(i)) + ratio);
+    for (var _i4 = 0; _i4 < e.getLength(); _i4++) {
+      num[_i4] ^= QRMath.gexp(QRMath.glog(e.get(_i4)) + ratio);
     }
     return new QRPolynomial(num, 0).mod(e);
   }
 };
 
-const QRUtil = {
-  PATTERN_POSITION_TABLE: [
-    [],
-    [6, 18],
-    [6, 22],
-    [6, 26],
-    [6, 30],
-    [6, 34],
-    [6, 22, 38],
-    [6, 24, 42],
-    [6, 26, 46],
-    [6, 28, 50],
-    [6, 30, 54],
-    [6, 32, 58],
-    [6, 34, 62],
-    [6, 26, 46, 66],
-    [6, 26, 48, 70],
-    [6, 26, 50, 74],
-    [6, 30, 54, 78],
-    [6, 30, 56, 82],
-    [6, 30, 58, 86],
-    [6, 34, 62, 90],
-    [6, 28, 50, 72, 94],
-    [6, 26, 50, 74, 98],
-    [6, 30, 54, 78, 102],
-    [6, 28, 54, 80, 106],
-    [6, 32, 58, 84, 110],
-    [6, 30, 58, 86, 114],
-    [6, 34, 62, 90, 118],
-    [6, 26, 50, 74, 98, 122],
-    [6, 30, 54, 78, 102, 126],
-    [6, 26, 52, 78, 104, 130],
-    [6, 30, 56, 82, 108, 134],
-    [6, 34, 60, 86, 112, 138],
-    [6, 30, 58, 86, 114, 142],
-    [6, 34, 62, 90, 118, 146],
-    [6, 30, 54, 78, 102, 126, 150],
-    [6, 24, 50, 76, 102, 128, 154],
-    [6, 28, 54, 80, 106, 132, 158],
-    [6, 32, 58, 84, 110, 136, 162],
-    [6, 26, 54, 82, 110, 138, 166],
-    [6, 30, 58, 86, 114, 142, 170]
-  ],
-  G15:
-    (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
-  G18:
-    (1 << 12) |
-    (1 << 11) |
-    (1 << 10) |
-    (1 << 9) |
-    (1 << 8) |
-    (1 << 5) |
-    (1 << 2) |
-    (1 << 0),
-  G15_MASK: (1 << 14) | (1 << 12) | (1 << 10) | (1 << 4) | (1 << 1),
-  getBCHTypeInfo: function(data) {
+var QRUtil = {
+  PATTERN_POSITION_TABLE: [[], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50], [6, 30, 54], [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70], [6, 26, 50, 74], [6, 30, 54, 78], [6, 30, 56, 82], [6, 30, 58, 86], [6, 34, 62, 90], [6, 28, 50, 72, 94], [6, 26, 50, 74, 98], [6, 30, 54, 78, 102], [6, 28, 54, 80, 106], [6, 32, 58, 84, 110], [6, 30, 58, 86, 114], [6, 34, 62, 90, 118], [6, 26, 50, 74, 98, 122], [6, 30, 54, 78, 102, 126], [6, 26, 52, 78, 104, 130], [6, 30, 56, 82, 108, 134], [6, 34, 60, 86, 112, 138], [6, 30, 58, 86, 114, 142], [6, 34, 62, 90, 118, 146], [6, 30, 54, 78, 102, 126, 150], [6, 24, 50, 76, 102, 128, 154], [6, 28, 54, 80, 106, 132, 158], [6, 32, 58, 84, 110, 136, 162], [6, 26, 54, 82, 110, 138, 166], [6, 30, 58, 86, 114, 142, 170]],
+  G15: 1 << 10 | 1 << 8 | 1 << 5 | 1 << 4 | 1 << 2 | 1 << 1 | 1 << 0,
+  G18: 1 << 12 | 1 << 11 | 1 << 10 | 1 << 9 | 1 << 8 | 1 << 5 | 1 << 2 | 1 << 0,
+  G15_MASK: 1 << 14 | 1 << 12 | 1 << 10 | 1 << 4 | 1 << 1,
+  getBCHTypeInfo: function getBCHTypeInfo(data) {
     var d = data << 10;
     while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
-      d ^=
-        QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15));
+      d ^= QRUtil.G15 << QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15);
     }
-    return ((data << 10) | d) ^ QRUtil.G15_MASK;
+    return (data << 10 | d) ^ QRUtil.G15_MASK;
   },
-  getBCHTypeNumber: function(data) {
+  getBCHTypeNumber: function getBCHTypeNumber(data) {
     var d = data << 12;
     while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
-      d ^=
-        QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18));
+      d ^= QRUtil.G18 << QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18);
     }
-    return (data << 12) | d;
+    return data << 12 | d;
   },
-  getBCHDigit: function(data) {
+  getBCHDigit: function getBCHDigit(data) {
     var digit = 0;
     while (data != 0) {
       digit++;
@@ -2471,10 +2342,10 @@ const QRUtil = {
     }
     return digit;
   },
-  getPatternPosition: function(typeNumber) {
+  getPatternPosition: function getPatternPosition(typeNumber) {
     return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
   },
-  getMask: function(maskPattern, i, j) {
+  getMask: function getMask(maskPattern, i, j) {
     switch (maskPattern) {
       case QRMaskPattern.PATTERN000:
         return (i + j) % 2 == 0;
@@ -2487,23 +2358,23 @@ const QRUtil = {
       case QRMaskPattern.PATTERN100:
         return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 == 0;
       case QRMaskPattern.PATTERN101:
-        return (i * j) % 2 + (i * j) % 3 == 0;
+        return i * j % 2 + i * j % 3 == 0;
       case QRMaskPattern.PATTERN110:
-        return ((i * j) % 2 + (i * j) % 3) % 2 == 0;
+        return (i * j % 2 + i * j % 3) % 2 == 0;
       case QRMaskPattern.PATTERN111:
-        return ((i * j) % 3 + (i + j) % 2) % 2 == 0;
+        return (i * j % 3 + (i + j) % 2) % 2 == 0;
       default:
         throw new Error('bad maskPattern:' + maskPattern);
     }
   },
-  getErrorCorrectPolynomial: function(errorCorrectLength) {
+  getErrorCorrectPolynomial: function getErrorCorrectPolynomial(errorCorrectLength) {
     var a = new QRPolynomial([1], 0);
     for (var i = 0; i < errorCorrectLength; i++) {
       a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0));
     }
     return a;
   },
-  getLengthInBits: function(mode, type) {
+  getLengthInBits: function getLengthInBits(mode, type) {
     if (type >= 1 && type < 10) {
       switch (mode) {
         case QRMode.MODE_NUMBER:
@@ -2547,7 +2418,7 @@ const QRUtil = {
       throw new Error('type:' + type);
     }
   },
-  getLostPoint: function(qrCode) {
+  getLostPoint: function getLostPoint(qrCode) {
     var moduleCount = qrCode.getModuleCount();
     var lostPoint = 0;
     for (var row = 0; row < moduleCount; row++) {
@@ -2575,52 +2446,36 @@ const QRUtil = {
         }
       }
     }
-    for (let row = 0; row < moduleCount - 1; row++) {
-      for (let col = 0; col < moduleCount - 1; col++) {
+    for (var _row = 0; _row < moduleCount - 1; _row++) {
+      for (var _col = 0; _col < moduleCount - 1; _col++) {
         var count = 0;
-        if (qrCode.isDark(row, col)) count++;
-        if (qrCode.isDark(row + 1, col)) count++;
-        if (qrCode.isDark(row, col + 1)) count++;
-        if (qrCode.isDark(row + 1, col + 1)) count++;
+        if (qrCode.isDark(_row, _col)) count++;
+        if (qrCode.isDark(_row + 1, _col)) count++;
+        if (qrCode.isDark(_row, _col + 1)) count++;
+        if (qrCode.isDark(_row + 1, _col + 1)) count++;
         if (count == 0 || count == 4) {
           lostPoint += 3;
         }
       }
     }
-    for (let row = 0; row < moduleCount; row++) {
-      for (let col = 0; col < moduleCount - 6; col++) {
-        if (
-          qrCode.isDark(row, col) &&
-          !qrCode.isDark(row, col + 1) &&
-          qrCode.isDark(row, col + 2) &&
-          qrCode.isDark(row, col + 3) &&
-          qrCode.isDark(row, col + 4) &&
-          !qrCode.isDark(row, col + 5) &&
-          qrCode.isDark(row, col + 6)
-        ) {
+    for (var _row2 = 0; _row2 < moduleCount; _row2++) {
+      for (var _col2 = 0; _col2 < moduleCount - 6; _col2++) {
+        if (qrCode.isDark(_row2, _col2) && !qrCode.isDark(_row2, _col2 + 1) && qrCode.isDark(_row2, _col2 + 2) && qrCode.isDark(_row2, _col2 + 3) && qrCode.isDark(_row2, _col2 + 4) && !qrCode.isDark(_row2, _col2 + 5) && qrCode.isDark(_row2, _col2 + 6)) {
           lostPoint += 40;
         }
       }
     }
-    for (let col = 0; col < moduleCount; col++) {
-      for (let row = 0; row < moduleCount - 6; row++) {
-        if (
-          qrCode.isDark(row, col) &&
-          !qrCode.isDark(row + 1, col) &&
-          qrCode.isDark(row + 2, col) &&
-          qrCode.isDark(row + 3, col) &&
-          qrCode.isDark(row + 4, col) &&
-          !qrCode.isDark(row + 5, col) &&
-          qrCode.isDark(row + 6, col)
-        ) {
+    for (var _col3 = 0; _col3 < moduleCount; _col3++) {
+      for (var _row3 = 0; _row3 < moduleCount - 6; _row3++) {
+        if (qrCode.isDark(_row3, _col3) && !qrCode.isDark(_row3 + 1, _col3) && qrCode.isDark(_row3 + 2, _col3) && qrCode.isDark(_row3 + 3, _col3) && qrCode.isDark(_row3 + 4, _col3) && !qrCode.isDark(_row3 + 5, _col3) && qrCode.isDark(_row3 + 6, _col3)) {
           lostPoint += 40;
         }
       }
     }
     var darkCount = 0;
-    for (let col = 0; col < moduleCount; col++) {
-      for (let row = 0; row < moduleCount; row++) {
-        if (qrCode.isDark(row, col)) {
+    for (var _col4 = 0; _col4 < moduleCount; _col4++) {
+      for (var _row4 = 0; _row4 < moduleCount; _row4++) {
+        if (qrCode.isDark(_row4, _col4)) {
           darkCount++;
         }
       }
@@ -2637,25 +2492,25 @@ function QRBitBuffer() {
 }
 
 QRBitBuffer.prototype = {
-  get: function(index) {
+  get: function get(index) {
     var bufIndex = Math.floor(index / 8);
-    return ((this.buffer[bufIndex] >>> (7 - index % 8)) & 1) == 1;
+    return (this.buffer[bufIndex] >>> 7 - index % 8 & 1) == 1;
   },
-  put: function(num, length) {
+  put: function put(num, length) {
     for (var i = 0; i < length; i++) {
-      this.putBit(((num >>> (length - i - 1)) & 1) == 1);
+      this.putBit((num >>> length - i - 1 & 1) == 1);
     }
   },
-  getLengthInBits: function() {
+  getLengthInBits: function getLengthInBits() {
     return this.length;
   },
-  putBit: function(bit) {
+  putBit: function putBit(bit) {
     var bufIndex = Math.floor(this.length / 8);
     if (this.buffer.length <= bufIndex) {
       this.buffer.push(0);
     }
     if (bit) {
-      this.buffer[bufIndex] |= 0x80 >>> (this.length % 8);
+      this.buffer[bufIndex] |= 0x80 >>> this.length % 8;
     }
     this.length++;
   }
@@ -2669,17 +2524,17 @@ function QR8bitByte(data) {
     var byteArray = [];
     var code = this.data.charCodeAt(i);
     if (code > 0x10000) {
-      byteArray[0] = 0xf0 | ((code & 0x1c0000) >>> 18);
-      byteArray[1] = 0x80 | ((code & 0x3f000) >>> 12);
-      byteArray[2] = 0x80 | ((code & 0xfc0) >>> 6);
-      byteArray[3] = 0x80 | (code & 0x3f);
+      byteArray[0] = 0xf0 | (code & 0x1c0000) >>> 18;
+      byteArray[1] = 0x80 | (code & 0x3f000) >>> 12;
+      byteArray[2] = 0x80 | (code & 0xfc0) >>> 6;
+      byteArray[3] = 0x80 | code & 0x3f;
     } else if (code > 0x800) {
-      byteArray[0] = 0xe0 | ((code & 0xf000) >>> 12);
-      byteArray[1] = 0x80 | ((code & 0xfc0) >>> 6);
-      byteArray[2] = 0x80 | (code & 0x3f);
+      byteArray[0] = 0xe0 | (code & 0xf000) >>> 12;
+      byteArray[1] = 0x80 | (code & 0xfc0) >>> 6;
+      byteArray[2] = 0x80 | code & 0x3f;
     } else if (code > 0x80) {
-      byteArray[0] = 0xc0 | ((code & 0x7c0) >>> 6);
-      byteArray[1] = 0x80 | (code & 0x3f);
+      byteArray[0] = 0xc0 | (code & 0x7c0) >>> 6;
+      byteArray[1] = 0x80 | code & 0x3f;
     } else {
       byteArray[0] = code;
     }
@@ -2694,10 +2549,10 @@ function QR8bitByte(data) {
 }
 
 QR8bitByte.prototype = {
-  getLength: function(buffer) {
+  getLength: function getLength(buffer) {
     return this.parsedData.length;
   },
-  write: function(buffer) {
+  write: function write(buffer) {
     for (var i = 0, l = this.parsedData.length; i < l; i++) {
       buffer.put(this.parsedData[i], 8);
     }
@@ -2709,178 +2564,12 @@ function QRRSBlock(totalCount, dataCount) {
   this.dataCount = dataCount;
 }
 
-QRRSBlock.RS_BLOCK_TABLE = [
-  [1, 26, 19],
-  [1, 26, 16],
-  [1, 26, 13],
-  [1, 26, 9],
-  [1, 44, 34],
-  [1, 44, 28],
-  [1, 44, 22],
-  [1, 44, 16],
-  [1, 70, 55],
-  [1, 70, 44],
-  [2, 35, 17],
-  [2, 35, 13],
-  [1, 100, 80],
-  [2, 50, 32],
-  [2, 50, 24],
-  [4, 25, 9],
-  [1, 134, 108],
-  [2, 67, 43],
-  [2, 33, 15, 2, 34, 16],
-  [2, 33, 11, 2, 34, 12],
-  [2, 86, 68],
-  [4, 43, 27],
-  [4, 43, 19],
-  [4, 43, 15],
-  [2, 98, 78],
-  [4, 49, 31],
-  [2, 32, 14, 4, 33, 15],
-  [4, 39, 13, 1, 40, 14],
-  [2, 121, 97],
-  [2, 60, 38, 2, 61, 39],
-  [4, 40, 18, 2, 41, 19],
-  [4, 40, 14, 2, 41, 15],
-  [2, 146, 116],
-  [3, 58, 36, 2, 59, 37],
-  [4, 36, 16, 4, 37, 17],
-  [4, 36, 12, 4, 37, 13],
-  [2, 86, 68, 2, 87, 69],
-  [4, 69, 43, 1, 70, 44],
-  [6, 43, 19, 2, 44, 20],
-  [6, 43, 15, 2, 44, 16],
-  [4, 101, 81],
-  [1, 80, 50, 4, 81, 51],
-  [4, 50, 22, 4, 51, 23],
-  [3, 36, 12, 8, 37, 13],
-  [2, 116, 92, 2, 117, 93],
-  [6, 58, 36, 2, 59, 37],
-  [4, 46, 20, 6, 47, 21],
-  [7, 42, 14, 4, 43, 15],
-  [4, 133, 107],
-  [8, 59, 37, 1, 60, 38],
-  [8, 44, 20, 4, 45, 21],
-  [12, 33, 11, 4, 34, 12],
-  [3, 145, 115, 1, 146, 116],
-  [4, 64, 40, 5, 65, 41],
-  [11, 36, 16, 5, 37, 17],
-  [11, 36, 12, 5, 37, 13],
-  [5, 109, 87, 1, 110, 88],
-  [5, 65, 41, 5, 66, 42],
-  [5, 54, 24, 7, 55, 25],
-  [11, 36, 12],
-  [5, 122, 98, 1, 123, 99],
-  [7, 73, 45, 3, 74, 46],
-  [15, 43, 19, 2, 44, 20],
-  [3, 45, 15, 13, 46, 16],
-  [1, 135, 107, 5, 136, 108],
-  [10, 74, 46, 1, 75, 47],
-  [1, 50, 22, 15, 51, 23],
-  [2, 42, 14, 17, 43, 15],
-  [5, 150, 120, 1, 151, 121],
-  [9, 69, 43, 4, 70, 44],
-  [17, 50, 22, 1, 51, 23],
-  [2, 42, 14, 19, 43, 15],
-  [3, 141, 113, 4, 142, 114],
-  [3, 70, 44, 11, 71, 45],
-  [17, 47, 21, 4, 48, 22],
-  [9, 39, 13, 16, 40, 14],
-  [3, 135, 107, 5, 136, 108],
-  [3, 67, 41, 13, 68, 42],
-  [15, 54, 24, 5, 55, 25],
-  [15, 43, 15, 10, 44, 16],
-  [4, 144, 116, 4, 145, 117],
-  [17, 68, 42],
-  [17, 50, 22, 6, 51, 23],
-  [19, 46, 16, 6, 47, 17],
-  [2, 139, 111, 7, 140, 112],
-  [17, 74, 46],
-  [7, 54, 24, 16, 55, 25],
-  [34, 37, 13],
-  [4, 151, 121, 5, 152, 122],
-  [4, 75, 47, 14, 76, 48],
-  [11, 54, 24, 14, 55, 25],
-  [16, 45, 15, 14, 46, 16],
-  [6, 147, 117, 4, 148, 118],
-  [6, 73, 45, 14, 74, 46],
-  [11, 54, 24, 16, 55, 25],
-  [30, 46, 16, 2, 47, 17],
-  [8, 132, 106, 4, 133, 107],
-  [8, 75, 47, 13, 76, 48],
-  [7, 54, 24, 22, 55, 25],
-  [22, 45, 15, 13, 46, 16],
-  [10, 142, 114, 2, 143, 115],
-  [19, 74, 46, 4, 75, 47],
-  [28, 50, 22, 6, 51, 23],
-  [33, 46, 16, 4, 47, 17],
-  [8, 152, 122, 4, 153, 123],
-  [22, 73, 45, 3, 74, 46],
-  [8, 53, 23, 26, 54, 24],
-  [12, 45, 15, 28, 46, 16],
-  [3, 147, 117, 10, 148, 118],
-  [3, 73, 45, 23, 74, 46],
-  [4, 54, 24, 31, 55, 25],
-  [11, 45, 15, 31, 46, 16],
-  [7, 146, 116, 7, 147, 117],
-  [21, 73, 45, 7, 74, 46],
-  [1, 53, 23, 37, 54, 24],
-  [19, 45, 15, 26, 46, 16],
-  [5, 145, 115, 10, 146, 116],
-  [19, 75, 47, 10, 76, 48],
-  [15, 54, 24, 25, 55, 25],
-  [23, 45, 15, 25, 46, 16],
-  [13, 145, 115, 3, 146, 116],
-  [2, 74, 46, 29, 75, 47],
-  [42, 54, 24, 1, 55, 25],
-  [23, 45, 15, 28, 46, 16],
-  [17, 145, 115],
-  [10, 74, 46, 23, 75, 47],
-  [10, 54, 24, 35, 55, 25],
-  [19, 45, 15, 35, 46, 16],
-  [17, 145, 115, 1, 146, 116],
-  [14, 74, 46, 21, 75, 47],
-  [29, 54, 24, 19, 55, 25],
-  [11, 45, 15, 46, 46, 16],
-  [13, 145, 115, 6, 146, 116],
-  [14, 74, 46, 23, 75, 47],
-  [44, 54, 24, 7, 55, 25],
-  [59, 46, 16, 1, 47, 17],
-  [12, 151, 121, 7, 152, 122],
-  [12, 75, 47, 26, 76, 48],
-  [39, 54, 24, 14, 55, 25],
-  [22, 45, 15, 41, 46, 16],
-  [6, 151, 121, 14, 152, 122],
-  [6, 75, 47, 34, 76, 48],
-  [46, 54, 24, 10, 55, 25],
-  [2, 45, 15, 64, 46, 16],
-  [17, 152, 122, 4, 153, 123],
-  [29, 74, 46, 14, 75, 47],
-  [49, 54, 24, 10, 55, 25],
-  [24, 45, 15, 46, 46, 16],
-  [4, 152, 122, 18, 153, 123],
-  [13, 74, 46, 32, 75, 47],
-  [48, 54, 24, 14, 55, 25],
-  [42, 45, 15, 32, 46, 16],
-  [20, 147, 117, 4, 148, 118],
-  [40, 75, 47, 7, 76, 48],
-  [43, 54, 24, 22, 55, 25],
-  [10, 45, 15, 67, 46, 16],
-  [19, 148, 118, 6, 149, 119],
-  [18, 75, 47, 31, 76, 48],
-  [34, 54, 24, 34, 55, 25],
-  [20, 45, 15, 61, 46, 16]
-];
+QRRSBlock.RS_BLOCK_TABLE = [[1, 26, 19], [1, 26, 16], [1, 26, 13], [1, 26, 9], [1, 44, 34], [1, 44, 28], [1, 44, 22], [1, 44, 16], [1, 70, 55], [1, 70, 44], [2, 35, 17], [2, 35, 13], [1, 100, 80], [2, 50, 32], [2, 50, 24], [4, 25, 9], [1, 134, 108], [2, 67, 43], [2, 33, 15, 2, 34, 16], [2, 33, 11, 2, 34, 12], [2, 86, 68], [4, 43, 27], [4, 43, 19], [4, 43, 15], [2, 98, 78], [4, 49, 31], [2, 32, 14, 4, 33, 15], [4, 39, 13, 1, 40, 14], [2, 121, 97], [2, 60, 38, 2, 61, 39], [4, 40, 18, 2, 41, 19], [4, 40, 14, 2, 41, 15], [2, 146, 116], [3, 58, 36, 2, 59, 37], [4, 36, 16, 4, 37, 17], [4, 36, 12, 4, 37, 13], [2, 86, 68, 2, 87, 69], [4, 69, 43, 1, 70, 44], [6, 43, 19, 2, 44, 20], [6, 43, 15, 2, 44, 16], [4, 101, 81], [1, 80, 50, 4, 81, 51], [4, 50, 22, 4, 51, 23], [3, 36, 12, 8, 37, 13], [2, 116, 92, 2, 117, 93], [6, 58, 36, 2, 59, 37], [4, 46, 20, 6, 47, 21], [7, 42, 14, 4, 43, 15], [4, 133, 107], [8, 59, 37, 1, 60, 38], [8, 44, 20, 4, 45, 21], [12, 33, 11, 4, 34, 12], [3, 145, 115, 1, 146, 116], [4, 64, 40, 5, 65, 41], [11, 36, 16, 5, 37, 17], [11, 36, 12, 5, 37, 13], [5, 109, 87, 1, 110, 88], [5, 65, 41, 5, 66, 42], [5, 54, 24, 7, 55, 25], [11, 36, 12], [5, 122, 98, 1, 123, 99], [7, 73, 45, 3, 74, 46], [15, 43, 19, 2, 44, 20], [3, 45, 15, 13, 46, 16], [1, 135, 107, 5, 136, 108], [10, 74, 46, 1, 75, 47], [1, 50, 22, 15, 51, 23], [2, 42, 14, 17, 43, 15], [5, 150, 120, 1, 151, 121], [9, 69, 43, 4, 70, 44], [17, 50, 22, 1, 51, 23], [2, 42, 14, 19, 43, 15], [3, 141, 113, 4, 142, 114], [3, 70, 44, 11, 71, 45], [17, 47, 21, 4, 48, 22], [9, 39, 13, 16, 40, 14], [3, 135, 107, 5, 136, 108], [3, 67, 41, 13, 68, 42], [15, 54, 24, 5, 55, 25], [15, 43, 15, 10, 44, 16], [4, 144, 116, 4, 145, 117], [17, 68, 42], [17, 50, 22, 6, 51, 23], [19, 46, 16, 6, 47, 17], [2, 139, 111, 7, 140, 112], [17, 74, 46], [7, 54, 24, 16, 55, 25], [34, 37, 13], [4, 151, 121, 5, 152, 122], [4, 75, 47, 14, 76, 48], [11, 54, 24, 14, 55, 25], [16, 45, 15, 14, 46, 16], [6, 147, 117, 4, 148, 118], [6, 73, 45, 14, 74, 46], [11, 54, 24, 16, 55, 25], [30, 46, 16, 2, 47, 17], [8, 132, 106, 4, 133, 107], [8, 75, 47, 13, 76, 48], [7, 54, 24, 22, 55, 25], [22, 45, 15, 13, 46, 16], [10, 142, 114, 2, 143, 115], [19, 74, 46, 4, 75, 47], [28, 50, 22, 6, 51, 23], [33, 46, 16, 4, 47, 17], [8, 152, 122, 4, 153, 123], [22, 73, 45, 3, 74, 46], [8, 53, 23, 26, 54, 24], [12, 45, 15, 28, 46, 16], [3, 147, 117, 10, 148, 118], [3, 73, 45, 23, 74, 46], [4, 54, 24, 31, 55, 25], [11, 45, 15, 31, 46, 16], [7, 146, 116, 7, 147, 117], [21, 73, 45, 7, 74, 46], [1, 53, 23, 37, 54, 24], [19, 45, 15, 26, 46, 16], [5, 145, 115, 10, 146, 116], [19, 75, 47, 10, 76, 48], [15, 54, 24, 25, 55, 25], [23, 45, 15, 25, 46, 16], [13, 145, 115, 3, 146, 116], [2, 74, 46, 29, 75, 47], [42, 54, 24, 1, 55, 25], [23, 45, 15, 28, 46, 16], [17, 145, 115], [10, 74, 46, 23, 75, 47], [10, 54, 24, 35, 55, 25], [19, 45, 15, 35, 46, 16], [17, 145, 115, 1, 146, 116], [14, 74, 46, 21, 75, 47], [29, 54, 24, 19, 55, 25], [11, 45, 15, 46, 46, 16], [13, 145, 115, 6, 146, 116], [14, 74, 46, 23, 75, 47], [44, 54, 24, 7, 55, 25], [59, 46, 16, 1, 47, 17], [12, 151, 121, 7, 152, 122], [12, 75, 47, 26, 76, 48], [39, 54, 24, 14, 55, 25], [22, 45, 15, 41, 46, 16], [6, 151, 121, 14, 152, 122], [6, 75, 47, 34, 76, 48], [46, 54, 24, 10, 55, 25], [2, 45, 15, 64, 46, 16], [17, 152, 122, 4, 153, 123], [29, 74, 46, 14, 75, 47], [49, 54, 24, 10, 55, 25], [24, 45, 15, 46, 46, 16], [4, 152, 122, 18, 153, 123], [13, 74, 46, 32, 75, 47], [48, 54, 24, 14, 55, 25], [42, 45, 15, 32, 46, 16], [20, 147, 117, 4, 148, 118], [40, 75, 47, 7, 76, 48], [43, 54, 24, 22, 55, 25], [10, 45, 15, 67, 46, 16], [19, 148, 118, 6, 149, 119], [18, 75, 47, 31, 76, 48], [34, 54, 24, 34, 55, 25], [20, 45, 15, 61, 46, 16]];
 
-QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
+QRRSBlock.getRSBlocks = function (typeNumber, errorCorrectLevel) {
   var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
   if (!rsBlock) {
-    throw new Error(
-      'bad rs block @ typeNumber:' +
-        typeNumber +
-        '/errorCorrectLevel:' +
-        errorCorrectLevel
-    );
+    throw new Error('bad rs block @ typeNumber:' + typeNumber + '/errorCorrectLevel:' + errorCorrectLevel);
   }
   var length = rsBlock.length / 3;
   var list = [];
@@ -2895,7 +2584,7 @@ QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
   return list;
 };
 
-QRRSBlock.getRsBlockTable = function(typeNumber, errorCorrectLevel) {
+QRRSBlock.getRsBlockTable = function (typeNumber, errorCorrectLevel) {
   switch (errorCorrectLevel) {
     case QRErrorCorrectLevel.L:
       return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
@@ -2922,47 +2611,36 @@ function QRCodeModel(typeNumber, errorCorrectLevel) {
 }
 
 QRCodeModel.prototype = {
-  addData: function(data) {
+  addData: function addData(data) {
     var newData = new QR8bitByte(data);
     this.dataList.push(newData);
     this.dataCache = null;
   },
-  isDark: function(row, col) {
-    if (
-      row < 0 ||
-      this.moduleCount <= row ||
-      col < 0 ||
-      this.moduleCount <= col
-    ) {
+  isDark: function isDark(row, col) {
+    if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
       throw new Error(row + ',' + col);
     }
     return this.modules[row][col];
   },
-  getModuleCount: function() {
+  getModuleCount: function getModuleCount() {
     return this.moduleCount;
   },
-  make: function() {
+  make: function make() {
     if (this.typeNumber < 1) {
       var typeNumber = 1;
       for (typeNumber = 1; typeNumber < 40; typeNumber++) {
-        var rsBlocks = QRRSBlock.getRSBlocks(
-          typeNumber,
-          this.errorCorrectLevel
-        );
+        var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, this.errorCorrectLevel);
 
         var buffer = new QRBitBuffer();
         var totalDataCount = 0;
-        for (let i = 0; i < rsBlocks.length; i++) {
+        for (var i = 0; i < rsBlocks.length; i++) {
           totalDataCount += rsBlocks[i].dataCount;
         }
 
-        for (let i = 0; i < this.dataList.length; i++) {
-          var data = this.dataList[i];
+        for (var _i = 0; _i < this.dataList.length; _i++) {
+          var data = this.dataList[_i];
           buffer.put(data.mode, 4);
-          buffer.put(
-            data.getLength(),
-            QRUtil.getLengthInBits(data.mode, typeNumber)
-          );
+          buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber));
           data.write(buffer);
         }
         if (buffer.getLengthInBits() <= totalDataCount * 8) break;
@@ -2971,7 +2649,7 @@ QRCodeModel.prototype = {
     }
     this.makeImpl(!1, this.getBestMaskPattern());
   },
-  makeImpl: function(test, maskPattern) {
+  makeImpl: function makeImpl(test, maskPattern) {
     this.moduleCount = this.typeNumber * 4 + 17;
     this.modules = new Array(this.moduleCount);
     for (var row = 0; row < this.moduleCount; row++) {
@@ -2990,24 +2668,16 @@ QRCodeModel.prototype = {
       this.setupTypeNumber(test);
     }
     if (this.dataCache == null) {
-      this.dataCache = QRCodeModel.createData(
-        this.typeNumber,
-        this.errorCorrectLevel,
-        this.dataList
-      );
+      this.dataCache = QRCodeModel.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
     }
     this.mapData(this.dataCache, maskPattern);
   },
-  setupPositionProbePattern: function(row, col) {
+  setupPositionProbePattern: function setupPositionProbePattern(row, col) {
     for (var r = -1; r <= 7; r++) {
       if (row + r <= -1 || this.moduleCount <= row + r) continue;
       for (var c = -1; c <= 7; c++) {
         if (col + c <= -1 || this.moduleCount <= col + c) continue;
-        if (
-          (r >= 0 && r <= 6 && (c == 0 || c == 6)) ||
-          (c >= 0 && c <= 6 && (r == 0 || r == 6)) ||
-          (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-        ) {
+        if (r >= 0 && r <= 6 && (c == 0 || c == 6) || c >= 0 && c <= 6 && (r == 0 || r == 6) || r >= 2 && r <= 4 && c >= 2 && c <= 4) {
           this.modules[row + r][col + c] = !0;
         } else {
           this.modules[row + r][col + c] = !1;
@@ -3015,7 +2685,7 @@ QRCodeModel.prototype = {
       }
     }
   },
-  getBestMaskPattern: function() {
+  getBestMaskPattern: function getBestMaskPattern() {
     var minLostPoint = 0;
     var pattern = 0;
     for (var i = 0; i < 8; i++) {
@@ -3028,7 +2698,7 @@ QRCodeModel.prototype = {
     }
     return pattern;
   },
-  createMovieClip: function(target_mc, instance_name, depth) {
+  createMovieClip: function createMovieClip(target_mc, instance_name, depth) {
     var qr_mc = target_mc.createEmptyMovieClip(instance_name, depth);
     var cs = 1;
     this.make();
@@ -3049,7 +2719,7 @@ QRCodeModel.prototype = {
     }
     return qr_mc;
   },
-  setupTimingPattern: function() {
+  setupTimingPattern: function setupTimingPattern() {
     for (var r = 8; r < this.moduleCount - 8; r++) {
       if (this.modules[r][6] != null) {
         continue;
@@ -3063,7 +2733,7 @@ QRCodeModel.prototype = {
       this.modules[6][c] = c % 2 == 0;
     }
   },
-  setupPositionAdjustPattern: function() {
+  setupPositionAdjustPattern: function setupPositionAdjustPattern() {
     var pos = QRUtil.getPatternPosition(this.typeNumber);
     for (var i = 0; i < pos.length; i++) {
       for (var j = 0; j < pos.length; j++) {
@@ -3074,7 +2744,7 @@ QRCodeModel.prototype = {
         }
         for (var r = -2; r <= 2; r++) {
           for (var c = -2; c <= 2; c++) {
-            if (r == -2 || r == 2 || c == -2 || c == 2 || (r == 0 && c == 0)) {
+            if (r == -2 || r == 2 || c == -2 || c == 2 || r == 0 && c == 0) {
               this.modules[row + r][col + c] = !0;
             } else {
               this.modules[row + r][col + c] = !1;
@@ -3084,22 +2754,22 @@ QRCodeModel.prototype = {
       }
     }
   },
-  setupTypeNumber: function(test) {
+  setupTypeNumber: function setupTypeNumber(test) {
     var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
-    for (let i = 0; i < 18; i++) {
-      let mod = !test && ((bits >> i) & 1) == 1;
+    for (var i = 0; i < 18; i++) {
+      var mod = !test && (bits >> i & 1) == 1;
       this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
     }
-    for (let i = 0; i < 18; i++) {
-      let mod = !test && ((bits >> i) & 1) == 1;
-      this.modules[i % 3 + this.moduleCount - 8 - 3][Math.floor(i / 3)] = mod;
+    for (var _i2 = 0; _i2 < 18; _i2++) {
+      var _mod = !test && (bits >> _i2 & 1) == 1;
+      this.modules[_i2 % 3 + this.moduleCount - 8 - 3][Math.floor(_i2 / 3)] = _mod;
     }
   },
-  setupTypeInfo: function(test, maskPattern) {
-    var data = (this.errorCorrectLevel << 3) | maskPattern;
+  setupTypeInfo: function setupTypeInfo(test, maskPattern) {
+    var data = this.errorCorrectLevel << 3 | maskPattern;
     var bits = QRUtil.getBCHTypeInfo(data);
-    for (let i = 0; i < 15; i++) {
-      let mod = !test && ((bits >> i) & 1) == 1;
+    for (var i = 0; i < 15; i++) {
+      var mod = !test && (bits >> i & 1) == 1;
       if (i < 6) {
         this.modules[i][8] = mod;
       } else if (i < 8) {
@@ -3108,19 +2778,19 @@ QRCodeModel.prototype = {
         this.modules[this.moduleCount - 15 + i][8] = mod;
       }
     }
-    for (let i = 0; i < 15; i++) {
-      let mod = !test && ((bits >> i) & 1) == 1;
-      if (i < 8) {
-        this.modules[8][this.moduleCount - i - 1] = mod;
-      } else if (i < 9) {
-        this.modules[8][15 - i - 1 + 1] = mod;
+    for (var _i3 = 0; _i3 < 15; _i3++) {
+      var _mod2 = !test && (bits >> _i3 & 1) == 1;
+      if (_i3 < 8) {
+        this.modules[8][this.moduleCount - _i3 - 1] = _mod2;
+      } else if (_i3 < 9) {
+        this.modules[8][15 - _i3 - 1 + 1] = _mod2;
       } else {
-        this.modules[8][15 - i - 1] = mod;
+        this.modules[8][15 - _i3 - 1] = _mod2;
       }
     }
     this.modules[this.moduleCount - 8][8] = !test;
   },
-  mapData: function(data, maskPattern) {
+  mapData: function mapData(data, maskPattern) {
     var inc = -1;
     var row = this.moduleCount - 1;
     var bitIndex = 7;
@@ -3132,7 +2802,7 @@ QRCodeModel.prototype = {
           if (this.modules[row][col - c] == null) {
             var dark = !1;
             if (byteIndex < data.length) {
-              dark = ((data[byteIndex] >>> bitIndex) & 1) == 1;
+              dark = (data[byteIndex] >>> bitIndex & 1) == 1;
             }
             var mask = QRUtil.getMask(maskPattern, row, col - c);
             if (mask) {
@@ -3160,27 +2830,21 @@ QRCodeModel.prototype = {
 QRCodeModel.PAD0 = 0xec;
 QRCodeModel.PAD1 = 0x11;
 
-QRCodeModel.createData = function(typeNumber, errorCorrectLevel, dataList) {
+QRCodeModel.createData = function (typeNumber, errorCorrectLevel, dataList) {
   var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
   var buffer = new QRBitBuffer();
-  for (let i = 0; i < dataList.length; i++) {
-    let data = dataList[i];
+  for (var i = 0; i < dataList.length; i++) {
+    var data = dataList[i];
     buffer.put(data.mode, 4);
     buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber));
     data.write(buffer);
   }
   var totalDataCount = 0;
-  for (let i = 0; i < rsBlocks.length; i++) {
-    totalDataCount += rsBlocks[i].dataCount;
+  for (var _i4 = 0; _i4 < rsBlocks.length; _i4++) {
+    totalDataCount += rsBlocks[_i4].dataCount;
   }
   if (buffer.getLengthInBits() > totalDataCount * 8) {
-    throw new Error(
-      'code length overflow. (' +
-        buffer.getLengthInBits() +
-        '>' +
-        totalDataCount * 8 +
-        ')'
-    );
+    throw new Error('code length overflow. (' + buffer.getLengthInBits() + '>' + totalDataCount * 8 + ')');
   }
   if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
     buffer.put(0, 4);
@@ -3201,7 +2865,7 @@ QRCodeModel.createData = function(typeNumber, errorCorrectLevel, dataList) {
   return QRCodeModel.createBytes(buffer, rsBlocks);
 };
 
-QRCodeModel.createBytes = function(buffer, rsBlocks) {
+QRCodeModel.createBytes = function (buffer, rsBlocks) {
   var offset = 0;
   var maxDcCount = 0;
   var maxEcCount = 0;
@@ -3221,28 +2885,28 @@ QRCodeModel.createBytes = function(buffer, rsBlocks) {
     var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
     var modPoly = rawPoly.mod(rsPoly);
     ecdata[r] = new Array(rsPoly.getLength() - 1);
-    for (let i = 0; i < ecdata[r].length; i++) {
-      var modIndex = i + modPoly.getLength() - ecdata[r].length;
-      ecdata[r][i] = modIndex >= 0 ? modPoly.get(modIndex) : 0;
+    for (var _i5 = 0; _i5 < ecdata[r].length; _i5++) {
+      var modIndex = _i5 + modPoly.getLength() - ecdata[r].length;
+      ecdata[r][_i5] = modIndex >= 0 ? modPoly.get(modIndex) : 0;
     }
   }
   var totalCodeCount = 0;
-  for (let i = 0; i < rsBlocks.length; i++) {
-    totalCodeCount += rsBlocks[i].totalCount;
+  for (var _i6 = 0; _i6 < rsBlocks.length; _i6++) {
+    totalCodeCount += rsBlocks[_i6].totalCount;
   }
   var data = new Array(totalCodeCount);
   var index = 0;
-  for (let i = 0; i < maxDcCount; i++) {
-    for (let r = 0; r < rsBlocks.length; r++) {
-      if (i < dcdata[r].length) {
-        data[index++] = dcdata[r][i];
+  for (var _i7 = 0; _i7 < maxDcCount; _i7++) {
+    for (var _r = 0; _r < rsBlocks.length; _r++) {
+      if (_i7 < dcdata[_r].length) {
+        data[index++] = dcdata[_r][_i7];
       }
     }
   }
-  for (let i = 0; i < maxEcCount; i++) {
-    for (let r = 0; r < rsBlocks.length; r++) {
-      if (i < ecdata[r].length) {
-        data[index++] = ecdata[r][i];
+  for (var _i8 = 0; _i8 < maxEcCount; _i8++) {
+    for (var _r2 = 0; _r2 < rsBlocks.length; _r2++) {
+      if (_i8 < ecdata[_r2].length) {
+        data[index++] = ecdata[_r2][_i8];
       }
     }
   }
@@ -3263,14 +2927,14 @@ function _safeSetDataURI(fSuccess, fFail) {
   // Check it just once
   if (self._bSupportDataURI === null) {
     var el = document.createElement('img');
-    var fOnError = function() {
+    var fOnError = function fOnError() {
       self._bSupportDataURI = false;
 
       if (self._fFail) {
         self._fFail();
       }
     };
-    var fOnSuccess = function() {
+    var fOnSuccess = function fOnSuccess() {
       self._bSupportDataURI = true;
 
       if (self._fSuccess) {
@@ -3281,8 +2945,7 @@ function _safeSetDataURI(fSuccess, fFail) {
     el.onabort = fOnError;
     el.onerror = fOnError;
     el.onload = fOnSuccess;
-    el.src =
-      'data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=='; // the Image contains 1px data.
+    el.src = 'data:image/gif;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg=='; // the Image contains 1px data.
   } else if (self._bSupportDataURI === true && self._fSuccess) {
     self._fSuccess();
   } else if (self._bSupportDataURI === false && self._fFail) {
@@ -3306,7 +2969,7 @@ function Drawing(htOption) {
   this._bindElement = htOption.bindElement;
 }
 
-Drawing.prototype.draw = function(oQRCode) {
+Drawing.prototype.draw = function (oQRCode) {
   var _elImage = this._elImage;
   var _tCanvas = document.createElement('canvas');
   var _oContext = _tCanvas.getContext('2d');
@@ -3362,10 +3025,10 @@ Drawing.prototype.draw = function(oQRCode) {
     gifFrames = gif.decompressFrames(true);
     // console.log(gifFrames);
     if (_htOption.autoColor) {
-      let r = 0;
-      let g = 0;
-      let b = 0;
-      let count = 0;
+      var r = 0;
+      var g = 0;
+      var b = 0;
+      var count = 0;
       for (var i = 0; i < gifFrames[0].colorTable.length; i++) {
         var c = gifFrames[0].colorTable[i];
         if (c[0] > 200 || c[1] > 200 || c[2] > 200) continue;
@@ -3385,8 +3048,7 @@ Drawing.prototype.draw = function(oQRCode) {
   } else if (_htOption.backgroundImage !== undefined) {
     if (_htOption.autoColor) {
       var avgRGB = getAverageRGB(_htOption.backgroundImage);
-      _htOption.colorDark =
-        'rgb(' + avgRGB.r + ', ' + avgRGB.g + ', ' + avgRGB.b + ')';
+      _htOption.colorDark = 'rgb(' + avgRGB.r + ', ' + avgRGB.g + ', ' + avgRGB.b + ')';
     }
 
     if (_htOption.maskedDots) {
@@ -3399,17 +3061,7 @@ Drawing.prototype.draw = function(oQRCode) {
                  0, 0, _htOption.backgroundImage.width, _htOption.backgroundImage.height,
                  whiteMargin ? 0 : -margin, whiteMargin ? 0 : -margin, whiteMargin ? viewportSize : size, whiteMargin ? viewportSize : size);
                  */
-      _mContext.drawImage(
-        _htOption.backgroundImage,
-        0,
-        0,
-        _htOption.backgroundImage.width,
-        _htOption.backgroundImage.height,
-        0,
-        0,
-        size,
-        size
-      );
+      _mContext.drawImage(_htOption.backgroundImage, 0, 0, _htOption.backgroundImage.width, _htOption.backgroundImage.height, 0, 0, size, size);
 
       _bContext.rect(0, 0, size, size);
       _bContext.fillStyle = '#ffffff';
@@ -3420,17 +3072,7 @@ Drawing.prototype.draw = function(oQRCode) {
                  0, 0, _htOption.backgroundImage.width, _htOption.backgroundImage.height,
                  whiteMargin ? 0 : -margin, whiteMargin ? 0 : -margin, whiteMargin ? viewportSize : size, whiteMargin ? viewportSize : size);
                  */
-      _bContext.drawImage(
-        _htOption.backgroundImage,
-        0,
-        0,
-        _htOption.backgroundImage.width,
-        _htOption.backgroundImage.height,
-        0,
-        0,
-        size,
-        size
-      );
+      _bContext.drawImage(_htOption.backgroundImage, 0, 0, _htOption.backgroundImage.width, _htOption.backgroundImage.height, 0, 0, size, size);
       _bContext.rect(0, 0, size, size);
       _bContext.fillStyle = backgroundDimming;
       _bContext.fill();
@@ -3449,64 +3091,33 @@ Drawing.prototype.draw = function(oQRCode) {
   var agnPatternCenter = QRUtil.getPatternPosition(oQRCode.typeNumber);
 
   var xyOffset = (1 - dotScale) * 0.5;
-  for (let row = 0; row < nCount; row++) {
-    for (let col = 0; col < nCount; col++) {
+  for (var row = 0; row < nCount; row++) {
+    for (var col = 0; col < nCount; col++) {
       var bIsDark = oQRCode.isDark(row, col);
 
       // var isBlkPosCtr = ((col < 8 && (row < 8 || row >= nCount - 8)) || (col >= nCount - 8 && row < 8) || (col < nCount - 4 && col >= nCount - 4 - 5 && row < nCount - 4 && row >= nCount - 4 - 5));
-      var isBlkPosCtr =
-        (col < 8 && (row < 8 || row >= nCount - 8)) ||
-        (col >= nCount - 8 && row < 8);
+      var isBlkPosCtr = col < 8 && (row < 8 || row >= nCount - 8) || col >= nCount - 8 && row < 8;
 
       var bProtected = row === 6 || col === 6 || isBlkPosCtr;
 
-      for (let i = 0; i < agnPatternCenter.length - 1; i++) {
-        bProtected =
-          bProtected ||
-          (row >= agnPatternCenter[i] - 2 &&
-            row <= agnPatternCenter[i] + 2 &&
-            col >= agnPatternCenter[i] - 2 &&
-            col <= agnPatternCenter[i] + 2);
+      for (var _i = 0; _i < agnPatternCenter.length - 1; _i++) {
+        bProtected = bProtected || row >= agnPatternCenter[_i] - 2 && row <= agnPatternCenter[_i] + 2 && col >= agnPatternCenter[_i] - 2 && col <= agnPatternCenter[_i] + 2;
       }
 
-      let nLeft = col * nSize + (bProtected ? 0 : xyOffset * nSize);
-      let nTop = row * nSize + (bProtected ? 0 : xyOffset * nSize);
-      _oContext.strokeStyle = bIsDark
-        ? _htOption.colorDark
-        : _htOption.colorLight;
+      var nLeft = col * nSize + (bProtected ? 0 : xyOffset * nSize);
+      var nTop = row * nSize + (bProtected ? 0 : xyOffset * nSize);
+      _oContext.strokeStyle = bIsDark ? _htOption.colorDark : _htOption.colorLight;
       _oContext.lineWidth = 0.5;
-      _oContext.fillStyle = bIsDark
-        ? _htOption.colorDark
-        : 'rgba(255, 255, 255, 0.6)'; // _htOption.colorLight;
+      _oContext.fillStyle = bIsDark ? _htOption.colorDark : 'rgba(255, 255, 255, 0.6)'; // _htOption.colorLight;
       if (agnPatternCenter.length === 0) {
         // if align pattern list is empty, then it means that we don't need to leave room for the align patterns
         if (!bProtected) {
-          _fillRectWithMask(
-            _oContext,
-            nLeft,
-            nTop,
-            (bProtected ? (isBlkPosCtr ? 1 : 1) : dotScale) * nSize,
-            (bProtected ? (isBlkPosCtr ? 1 : 1) : dotScale) * nSize,
-            _maskCanvas,
-            bIsDark
-          );
+          _fillRectWithMask(_oContext, nLeft, nTop, (bProtected ? isBlkPosCtr ? 1 : 1 : dotScale) * nSize, (bProtected ? isBlkPosCtr ? 1 : 1 : dotScale) * nSize, _maskCanvas, bIsDark);
         }
       } else {
-        var inAgnRange =
-          col < nCount - 4 &&
-          col >= nCount - 4 - 5 &&
-          row < nCount - 4 &&
-          row >= nCount - 4 - 5;
+        var inAgnRange = col < nCount - 4 && col >= nCount - 4 - 5 && row < nCount - 4 && row >= nCount - 4 - 5;
         if (!bProtected && !inAgnRange) {
-          _fillRectWithMask(
-            _oContext,
-            nLeft,
-            nTop,
-            (bProtected ? (isBlkPosCtr ? 1 : 1) : dotScale) * nSize,
-            (bProtected ? (isBlkPosCtr ? 1 : 1) : dotScale) * nSize,
-            _maskCanvas,
-            bIsDark
-          );
+          _fillRectWithMask(_oContext, nLeft, nTop, (bProtected ? isBlkPosCtr ? 1 : 1 : dotScale) * nSize, (bProtected ? isBlkPosCtr ? 1 : 1 : dotScale) * nSize, _maskCanvas, bIsDark);
         }
       }
     }
@@ -3523,20 +3134,15 @@ Drawing.prototype.draw = function(oQRCode) {
 
   // Draw ALIGN protectors
   var edgeCenter = agnPatternCenter[agnPatternCenter.length - 1];
-  for (let i = 0; i < agnPatternCenter.length; i++) {
-    for (let j = 0; j < agnPatternCenter.length; j++) {
-      let agnX = agnPatternCenter[j];
-      let agnY = agnPatternCenter[i];
+  for (var _i2 = 0; _i2 < agnPatternCenter.length; _i2++) {
+    for (var j = 0; j < agnPatternCenter.length; j++) {
+      var agnX = agnPatternCenter[j];
+      var agnY = agnPatternCenter[_i2];
       if (agnX === 6 && (agnY === 6 || agnY === edgeCenter)) {
         continue;
       } else if (agnY === 6 && (agnX === 6 || agnX === edgeCenter)) {
         continue;
-      } else if (
-        agnX !== 6 &&
-        agnX !== edgeCenter &&
-        agnY !== 6 &&
-        agnY !== edgeCenter
-      ) {
+      } else if (agnX !== 6 && agnX !== edgeCenter && agnY !== 6 && agnY !== edgeCenter) {
         _drawAlignProtector(_oContext, agnX, agnY, nSize, nSize);
       } else {
         _drawAlignProtector(_oContext, agnX, agnY, nSize, nSize);
@@ -3564,29 +3170,24 @@ Drawing.prototype.draw = function(oQRCode) {
   _oContext.fillRect((nCount - 7 + 2) * nSize, 2 * nSize, 3 * nSize, 3 * nSize);
   _oContext.fillRect(2 * nSize, (nCount - 7 + 2) * nSize, 3 * nSize, 3 * nSize);
 
-  for (let i = 0; i < nCount - 8; i += 2) {
-    _oContext.fillRect((8 + i) * nSize, 6 * nSize, nSize, nSize);
-    _oContext.fillRect(6 * nSize, (8 + i) * nSize, nSize, nSize);
+  for (var _i3 = 0; _i3 < nCount - 8; _i3 += 2) {
+    _oContext.fillRect((8 + _i3) * nSize, 6 * nSize, nSize, nSize);
+    _oContext.fillRect(6 * nSize, (8 + _i3) * nSize, nSize, nSize);
   }
-  for (let i = 0; i < agnPatternCenter.length; i++) {
-    for (let j = 0; j < agnPatternCenter.length; j++) {
-      let agnX = agnPatternCenter[j];
-      let agnY = agnPatternCenter[i];
-      if (agnX === 6 && (agnY === 6 || agnY === edgeCenter)) {
+  for (var _i4 = 0; _i4 < agnPatternCenter.length; _i4++) {
+    for (var _j = 0; _j < agnPatternCenter.length; _j++) {
+      var _agnX = agnPatternCenter[_j];
+      var _agnY = agnPatternCenter[_i4];
+      if (_agnX === 6 && (_agnY === 6 || _agnY === edgeCenter)) {
         continue;
-      } else if (agnY === 6 && (agnX === 6 || agnX === edgeCenter)) {
+      } else if (_agnY === 6 && (_agnX === 6 || _agnX === edgeCenter)) {
         continue;
-      } else if (
-        agnX !== 6 &&
-        agnX !== edgeCenter &&
-        agnY !== 6 &&
-        agnY !== edgeCenter
-      ) {
+      } else if (_agnX !== 6 && _agnX !== edgeCenter && _agnY !== 6 && _agnY !== edgeCenter) {
         _oContext.fillStyle = 'rgba(0, 0, 0, .2)';
-        _drawAlign(_oContext, agnX, agnY, nSize, nSize);
+        _drawAlign(_oContext, _agnX, _agnY, nSize, nSize);
       } else {
         _oContext.fillStyle = _htOption.colorDark;
-        _drawAlign(_oContext, agnX, agnY, nSize, nSize);
+        _drawAlign(_oContext, _agnX, _agnY, nSize, nSize);
       }
     }
   }
@@ -3601,9 +3202,9 @@ Drawing.prototype.draw = function(oQRCode) {
   }
 
   if (_htOption.logoImage !== undefined) {
-    let logoScale = _htOption.logoScale;
-    let logoMargin = _htOption.logoMargin;
-    let logoCornerRadius = _htOption.logoCornerRadius;
+    var logoScale = _htOption.logoScale;
+    var logoMargin = _htOption.logoMargin;
+    var logoCornerRadius = _htOption.logoCornerRadius;
     if (logoScale <= 0 || logoScale >= 1.0) {
       logoScale = 0.2;
     }
@@ -3616,33 +3217,19 @@ Drawing.prototype.draw = function(oQRCode) {
 
     _oContext.restore();
 
-    let logoSize = viewportSize * logoScale;
-    let x = 0.5 * (size - logoSize);
-    let y = x;
+    var logoSize = viewportSize * logoScale;
+    var x = 0.5 * (size - logoSize);
+    var y = x;
 
     _oContext.fillStyle = '#FFFFFF';
     _oContext.save();
-    _prepareRoundedCornerClip(
-      _oContext,
-      x - logoMargin,
-      y - logoMargin,
-      logoSize + 2 * logoMargin,
-      logoSize + 2 * logoMargin,
-      logoCornerRadius
-    );
+    _prepareRoundedCornerClip(_oContext, x - logoMargin, y - logoMargin, logoSize + 2 * logoMargin, logoSize + 2 * logoMargin, logoCornerRadius);
     _oContext.clip();
     _oContext.fill();
     _oContext.restore();
 
     _oContext.save();
-    _prepareRoundedCornerClip(
-      _oContext,
-      x,
-      y,
-      logoSize,
-      logoSize,
-      logoCornerRadius
-    );
+    _prepareRoundedCornerClip(_oContext, x, y, logoSize, logoSize, logoCornerRadius);
     _oContext.clip();
     _oContext.drawImage(_htOption.logoImage, x, y, logoSize, logoSize);
     _oContext.restore();
@@ -3657,34 +3244,31 @@ Drawing.prototype.draw = function(oQRCode) {
     if (_htOption.binarize) {
       var pixels = _oContext.getImageData(0, 0, size, size);
       var threshold = 128;
-      if (
-        parseInt(_htOption.binarizeThreshold) > 0 &&
-        parseInt(_htOption.binarizeThreshold) < 255
-      ) {
+      if (parseInt(_htOption.binarizeThreshold) > 0 && parseInt(_htOption.binarizeThreshold) < 255) {
         threshold = parseInt(_htOption.binarizeThreshold);
       }
-      for (let i = 0; i < pixels.data.length; i += 4) {
+      for (var _i5 = 0; _i5 < pixels.data.length; _i5 += 4) {
         // rgb in [0, 255]
-        var R = pixels.data[i];
-        var G = pixels.data[i + 1];
-        var B = pixels.data[i + 2];
+        var R = pixels.data[_i5];
+        var G = pixels.data[_i5 + 1];
+        var B = pixels.data[_i5 + 2];
         var sum = _greyscale(R, G, B);
         if (sum > threshold) {
-          pixels.data[i] = 255;
-          pixels.data[i + 1] = 255;
-          pixels.data[i + 2] = 255;
+          pixels.data[_i5] = 255;
+          pixels.data[_i5 + 1] = 255;
+          pixels.data[_i5 + 2] = 255;
         } else {
-          pixels.data[i] = 0;
-          pixels.data[i + 1] = 0;
-          pixels.data[i + 2] = 0;
+          pixels.data[_i5] = 0;
+          pixels.data[_i5 + 1] = 0;
+          pixels.data[_i5 + 2] = 0;
         }
       }
       _oContext.putImageData(pixels, 0, 0);
     }
 
     // Scale the final image
-    let _fCanvas = document.createElement('canvas');
-    let _fContext = _fCanvas.getContext('2d');
+    var _fCanvas = document.createElement('canvas');
+    var _fContext = _fCanvas.getContext('2d');
     _fCanvas.width = rawSize;
     _fCanvas.height = rawSize;
     _fContext.drawImage(_tCanvas, 0, 0, rawSize, rawSize);
@@ -3702,8 +3286,7 @@ Drawing.prototype.draw = function(oQRCode) {
           el.src = this._elCanvas.toDataURL();
         } else {
           var elStyle = el.style;
-          elStyle['background-image'] =
-            'url(' + this._elCanvas.toDataURL() + ')';
+          elStyle['background-image'] = 'url(' + this._elCanvas.toDataURL() + ')';
           elStyle['background-size'] = 'contain';
           elStyle['background-repeat'] = 'no-repeat';
         }
@@ -3722,7 +3305,7 @@ Drawing.prototype.draw = function(oQRCode) {
     var hPatchCanvas = patchCanvas.getContext('2d');
     var patchData;
 
-    gifFrames.forEach(function(frame) {
+    gifFrames.forEach(function (frame) {
       // console.log(frame);
       if (gifOutput === undefined) {
         gifOutput = new gif_js({
@@ -3744,17 +3327,10 @@ Drawing.prototype.draw = function(oQRCode) {
         // console.log(rawBkg);
       }
 
-      if (
-        !patchData ||
-        frame.dims.width !== patchCanvas.width ||
-        frame.dims.height !== patchCanvas.height
-      ) {
+      if (!patchData || frame.dims.width !== patchCanvas.width || frame.dims.height !== patchCanvas.height) {
         patchCanvas.width = frame.dims.width;
         patchCanvas.height = frame.dims.height;
-        patchData = hPatchCanvas.createImageData(
-          frame.dims.width,
-          frame.dims.height
-        );
+        patchData = hPatchCanvas.createImageData(frame.dims.width, frame.dims.height);
       }
 
       patchData.data.set(frame.patch);
@@ -3784,10 +3360,10 @@ Drawing.prototype.draw = function(oQRCode) {
       throw new Error('No frames.');
     }
     var ref = this;
-    gifOutput.on('finished', function(blob) {
+    gifOutput.on('finished', function (blob) {
       // Painting work completed
       var r = new window.FileReader();
-      r.onload = function(e) {
+      r.onload = function (e) {
         var data = e.target.result;
         ref._bIsPainted = true;
         if (ref._callback !== undefined) {
@@ -3816,22 +3392,22 @@ Drawing.prototype.draw = function(oQRCode) {
   }
 };
 
-Drawing.prototype.makeImage = function() {
+Drawing.prototype.makeImage = function () {
   if (this._bIsPainted) {
     _safeSetDataURI.call(this, _onMakeImage);
   }
 };
 
-Drawing.prototype.isPainted = function() {
+Drawing.prototype.isPainted = function () {
   return this._bIsPainted;
 };
 
-Drawing.prototype.clear = function() {
+Drawing.prototype.clear = function () {
   this._oContext.clearRect(0, 0, this._elCanvas.width, this._elCanvas.height);
   this._bIsPainted = false;
 };
 
-Drawing.prototype.round = function(nNumber) {
+Drawing.prototype.round = function (nNumber) {
   if (!nNumber) {
     return nNumber;
   }
@@ -3867,51 +3443,21 @@ function _fillRectWithMask(canvas, x, y, w, h, maskSrc, bDark) {
 }
 
 function _drawAlignProtector(context, centerX, centerY, nWidth, nHeight) {
-  context.clearRect(
-    (centerX - 2) * nWidth,
-    (centerY - 2) * nHeight,
-    5 * nWidth,
-    5 * nHeight
-  );
-  context.fillRect(
-    (centerX - 2) * nWidth,
-    (centerY - 2) * nHeight,
-    5 * nWidth,
-    5 * nHeight
-  );
+  context.clearRect((centerX - 2) * nWidth, (centerY - 2) * nHeight, 5 * nWidth, 5 * nHeight);
+  context.fillRect((centerX - 2) * nWidth, (centerY - 2) * nHeight, 5 * nWidth, 5 * nHeight);
 }
 
 function _drawAlign(context, centerX, centerY, nWidth, nHeight) {
-  context.fillRect(
-    (centerX - 2) * nWidth,
-    (centerY - 2) * nHeight,
-    nWidth,
-    4 * nHeight
-  );
-  context.fillRect(
-    (centerX + 2) * nWidth,
-    (centerY - 2 + 1) * nHeight,
-    nWidth,
-    4 * nHeight
-  );
-  context.fillRect(
-    (centerX - 2 + 1) * nWidth,
-    (centerY - 2) * nHeight,
-    4 * nWidth,
-    nHeight
-  );
-  context.fillRect(
-    (centerX - 2) * nWidth,
-    (centerY + 2) * nHeight,
-    4 * nWidth,
-    nHeight
-  );
+  context.fillRect((centerX - 2) * nWidth, (centerY - 2) * nHeight, nWidth, 4 * nHeight);
+  context.fillRect((centerX + 2) * nWidth, (centerY - 2 + 1) * nHeight, nWidth, 4 * nHeight);
+  context.fillRect((centerX - 2 + 1) * nWidth, (centerY - 2) * nHeight, 4 * nWidth, nHeight);
+  context.fillRect((centerX - 2) * nWidth, (centerY + 2) * nHeight, 4 * nWidth, nHeight);
   context.fillRect(centerX * nWidth, centerY * nHeight, nWidth, nHeight);
 }
 
-const AwesomeQRCode = function() {};
+var AwesomeQRCode = function AwesomeQRCode() {};
 
-AwesomeQRCode.prototype.create = function(vOption) {
+AwesomeQRCode.prototype.create = function (vOption) {
   this._htOption = {
     size: 800,
     margin: 20,
@@ -3956,7 +3502,7 @@ AwesomeQRCode.prototype.create = function(vOption) {
   }
 };
 
-AwesomeQRCode.prototype.makeCode = function(sText) {
+AwesomeQRCode.prototype.makeCode = function (sText) {
   this._oQRCode = new QRCodeModel(-1, this._htOption.correctLevel);
   this._oQRCode.addData(sText);
   this._oQRCode.make();
@@ -3964,45 +3510,44 @@ AwesomeQRCode.prototype.makeCode = function(sText) {
   this.makeImage();
 };
 
-AwesomeQRCode.prototype.makeImage = function() {
+AwesomeQRCode.prototype.makeImage = function () {
   if (typeof this._oDrawing.makeImage === 'function') {
     this._oDrawing.makeImage();
   }
 };
 
-AwesomeQRCode.prototype.clear = function() {
+AwesomeQRCode.prototype.clear = function () {
   this._oDrawing.clear();
 };
 
 AwesomeQRCode.CorrectLevel = QRErrorCorrectLevel;
 
 function getAverageRGB(imgEl) {
-  const blockSize = 5;
-  const defaultRGB = {
+  var blockSize = 5;
+  var defaultRGB = {
     r: 0,
     g: 0,
     b: 0
   };
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext && canvas.getContext('2d');
-  let data;
-  let width;
-  let height;
-  let i = -4;
-  let length;
-  let rgb = {
+  var canvas = document.createElement('canvas');
+  var context = canvas.getContext && canvas.getContext('2d');
+  var data = void 0;
+  var width = void 0;
+  var height = void 0;
+  var i = -4;
+  var length = void 0;
+  var rgb = {
     r: 0,
     g: 0,
     b: 0
   };
-  let count = 0;
+  var count = 0;
 
   if (!context) {
     return defaultRGB;
   }
 
-  height = canvas.height =
-    imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
+  height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
   width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || imgEl.width;
 
   context.drawImage(imgEl, 0, 0);
@@ -4016,11 +3561,7 @@ function getAverageRGB(imgEl) {
   length = data.data.length;
 
   while ((i += blockSize * 4) < length) {
-    if (
-      data.data[i] > 200 ||
-      data.data[i + 1] > 200 ||
-      data.data[i + 2] > 200
-    ) {
+    if (data.data[i] > 200 || data.data[i + 1] > 200 || data.data[i + 2] > 200) {
       continue;
     }
     ++count;
