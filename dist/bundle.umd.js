@@ -3500,6 +3500,8 @@ AwesomeQRCode.prototype.create = function (vOption) {
   if (this._htOption.text) {
     this.makeCode(this._htOption.text);
   }
+
+  return this;
 };
 
 AwesomeQRCode.prototype.makeCode = function (sText) {
@@ -3520,7 +3522,21 @@ AwesomeQRCode.prototype.clear = function () {
   this._oDrawing.clear();
 };
 
+AwesomeQRCode.prototype.download = function () {
+  var canvas = this._oDrawing._elCanvas;
+  downloadURI(canvas.toDataURL(), 'qrcode.png');
+};
+
 AwesomeQRCode.CorrectLevel = QRErrorCorrectLevel;
+
+function downloadURI(uri, name) {
+  var link = document.createElement('a');
+  link.download = name;
+  link.href = uri;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 function getAverageRGB(imgEl) {
   var blockSize = 5;
