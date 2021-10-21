@@ -5,6 +5,10 @@
 	"main": "dist/bundle.cjs.js",
 	"module": "dist/bundle.esm.js",
 	"browser": "dist/bundle.umd.js",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/LIU9293/art-qr.git"
+	},
 	"devDependencies": {
 		"babel-core": "^6.26.0",
 		"babel-preset-env": "^1.6.1",
